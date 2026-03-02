@@ -26,6 +26,7 @@
         .status-pill { padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
         .pill-pass { background: #dcfce7; color: #166534; }
         .pill-fail { background: #fee2e2; color: #991b1b; }
+        .pill-warn { background: #fef9c3; color: #854d0e; }
 
         .deep-mode-container { margin: 1.5rem 0; padding: 1.25rem; background: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd; display: flex; align-items: flex-start; gap: 12px; }
         #deepAnalysis { width: 20px; height: 20px; cursor: pointer; margin-top: 3px; }
@@ -55,8 +56,6 @@
         .stat-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; font-weight: 500; }
         
         .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
-        .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
-        .issue-list { margin: 0; color: #be123c; font-size: 0.9rem; }
 
         #loading { display: none; align-items: center; gap: 10px; color: #2563eb; font-weight: 700; }
         .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -88,12 +87,12 @@
                 <input type="checkbox" id="deepAnalysis">
                 <div class="deep-text">
                     <h4>🚀 Neural Vocal Isolation (Vocal DNA Mode)</h4>
-                    <p>Use this for comparing a dialogue-only Dub against a full Master. It isolates speech from background music to ensure accurate sync scores.</p>
+                    <p><strong>Note:</strong> Enabling this will isolate vocals for every file. Expect 60-90s processing time per track.</p>
                 </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem; gap: 1rem; align-items: center;">
-                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
+                <div id="loading"><div class="spinner"></div> Analyzing signals (this may take a minute)...</div>
                 <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
                 <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
             </div>
@@ -150,17 +149,22 @@
             let html = `<h2 style="margin-bottom:2rem;">Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
             
             data.results.forEach(r => {
-                const srMismatch = r.ref_meta.sr !== r.comp_meta.sr ? 'mismatch' : '';
-                const chMismatch = r.ref_meta.channels !== r.comp_meta.channels ? 'mismatch' : '';
+                // Formatting Drift Value
+                const isDriftValid = r.drift_ms !== "undefined" && r.drift_ms !== null;
+                const driftDisplay = isDriftValid ? `${r.drift_ms}ms` : "N/A";
                 
-                // Logic for Final Verdict Table
+                // Status Pills
                 const offsetStatus = Math.abs(r.offset_ms) > 50 ? 'pill-fail' : 'pill-pass';
-                const driftStatus = r.drift_ms > 30 ? 'pill-fail' : 'pill-pass';
+                const driftStatus = !isDriftValid ? 'pill-warn' : (r.drift_ms > 30 ? 'pill-fail' : 'pill-pass');
                 const dnaStatus = r.match_confidence > 15 ? 'pill-pass' : 'pill-fail';
 
                 const offsetMeaning = r.offset_ms > 0 
                     ? `The Dub audio needs to be moved <strong>${Math.abs(r.offset_ms)}ms earlier</strong>.` 
                     : `The Dub audio needs to be moved <strong>${Math.abs(r.offset_ms)}ms later</strong>.`;
+
+                const driftMeaning = !isDriftValid 
+                    ? "Drift could not be calculated (file too short or analysis failed)." 
+                    : (r.drift_ms > 30 ? "Playback speed mismatch detected; tracks will diverge." : "Playback speed is identical; no stretching needed.");
 
                 html += `
                     <div class="result-item">
@@ -187,9 +191,9 @@
                                     </tr>
                                     <tr>
                                         <td><strong>Sync Drift</strong></td>
-                                        <td>${r.drift_ms}ms</td>
-                                        <td><span class="status-pill ${driftStatus}">${r.drift_ms > 30 ? '❌ Issue' : '✅ Perfect'}</span></td>
-                                        <td>${r.drift_ms > 30 ? 'Playback speed mismatch detected; tracks will diverge.' : 'The playback speed is identical; no stretching needed.'}</td>
+                                        <td>${driftDisplay}</td>
+                                        <td><span class="status-pill ${driftStatus}">${!isDriftValid ? '⚠️ N/A' : (r.drift_ms > 30 ? '❌ Issue' : '✅ Perfect')}</span></td>
+                                        <td>${driftMeaning}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>DNA Match</strong></td>
@@ -200,27 +204,14 @@
                                 </tbody>
                             </table>
                         </div>
-                        
-                        ${r.issues.length > 0 ? `<div class="issue-box"><ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul></div>` : ''}
-                        
-                        <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
-                        <table class="prop-table">
-                            <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
-                            <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td class="${srMismatch}">${r.comp_meta.sr}</td></tr>
-                            <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td class="${chMismatch}">${r.comp_meta.channels}</td></tr>
-                            <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
-                            <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
-                        </table>
 
-                        <div class="stats-grid" style="opacity: 0.6;">
+                        <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-label">Audio Quality</div>
                                 <div class="stat-value" style="font-size: 0.95rem;">${r.quality.quality_label}</div>
                                 <div class="stat-sub">${r.quality.peak_status} | ${r.quality.dynamic_range}</div>
                             </div>
                         </div>
-                        
-                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
                     </div>`;
             });
             container.innerHTML = html;
