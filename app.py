@@ -58,10 +58,11 @@ _cache_lock = threading.Lock()
 # --- UTILITIES ---
 
 def classify_audio_quality(file_path):
+    """Resilient quality scan."""
     try:
         data, rate = sf.read(file_path)
         if len(data.shape) > 1:
-            data = np.mean(data, axis=1)
+            data = np.mean(data, axis=1) # Convert to mono for analysis
             
         max_val = np.max(np.abs(data))
         clipping = "Possible Clipping" if max_val > 0.99 else "Clean Peaks"
@@ -78,12 +79,14 @@ def classify_audio_quality(file_path):
             "peak_status": clipping,
             "quality_label": is_silent
         }
-    except Exception:
+    except Exception as e:
         return {"quality_label": "Scan Error", "dynamic_range": "N/A", "peak_status": "N/A"}
 
 def isolate_vocals(file_path, output_root):
+    """Neural separation (only runs if Demucs is installed)."""
     if not HAS_DEMUCS:
         return file_path
+    
     try:
         demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
         base_name = os.path.basename(file_path).rsplit('.', 1)[0]
@@ -148,12 +151,16 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     fp_a = get_efficient_fingerprint(anchor_path)
     fp_b = get_efficient_fingerprint(rendition_path)
     match_score = compare_fingerprints(fp_a, fp_b)
+    
     comp_meta = get_file_metadata(rendition_path)
     
+    # Load 30s segments for offset analysis
     y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=30)
     y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=30)
+    
     start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
     
+    # Calculate drift (comparing end-of-file segments)
     try:
         y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=max(0, ref_meta['duration']-30))
         y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=max(0, comp_meta['duration']-30))
@@ -162,6 +169,7 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     except:
         drift_ms = 0.0
 
+    # Visualization
     plt.figure(figsize=(10, 3))
     librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.5, label="Master")
     librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.5, label="Dub")
@@ -185,6 +193,8 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
         "ref_meta": ref_meta, 
         "comp_meta": comp_meta
     }
+
+# --- ROUTES ---
 
 @app.route('/')
 def index():
@@ -231,30 +241,22 @@ def upload_files():
             
             analysis = analyze_sync(ref_to_analyze, comp_to_analyze, ref_meta)
             
-            # --- SUMMARY LOGIC ---
-            summary = "Detection complete. Review metrics below for drift and DNA match."
-            if not analysis['issues']:
-                summary = "Detection complete. Audio is perfectly aligned."
-
-            # --- SANITIZE DATA (Fixes Python 3.14 JSON error) ---
             results.append({
                 'filename': f.filename,
-                'offset_ms': float(analysis['start_offset']),
-                'drift_ms': float(analysis['drift_ms']),
-                'match_confidence': float(analysis['match_score']),
+                'offset_ms': analysis['start_offset'],
+                'drift_ms': analysis['drift_ms'],
+                'match_confidence': analysis['match_score'],
                 'issues': analysis['issues'],
                 'visual': analysis['visual'],
                 'ref_meta': analysis['ref_meta'],
                 'comp_meta': analysis['comp_meta'],
                 'quality': quality_report,
-                'status_summary': summary,
-                'deep_mode_active': bool(deep_analysis and HAS_DEMUCS),
-                'needs_review': bool(len(analysis['issues']) > 0)
+                'deep_mode_active': deep_analysis and HAS_DEMUCS,
+                'needs_review': len(analysis['issues']) > 0
             })
             
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
