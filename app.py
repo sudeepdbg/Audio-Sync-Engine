@@ -15,16 +15,22 @@ import subprocess
 import soundfile as sf
 import time
 import threading
-import gc  # Added for garbage collection to release file locks
+import gc
 from scipy import signal
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# CONFIGURATION
+# --- SYSTEM CONFIGURATION ---
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
-app.config['MAX_FORM_MEMORY_SIZE'] = 500 * 1024 * 1024
+SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
+
+# --- QUALITY THRESHOLDS (Defined Constants) ---
+EXACT_MATCH_THRESHOLD = 95    # High confidence for identical files
+DUB_MATCH_THRESHOLD = 15      # Min similarity for localized dubs
+MAX_DRIFT_MS = 30             # Perceptibility limit for sync drift
+MAX_START_OFFSET_MS = 50      # Standard broadcast acceptable delay
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
@@ -36,8 +42,11 @@ _cache_lock = threading.Lock()
 
 # --- UTILITIES ---
 
+def allowed_file(filename):
+    """Ensures only valid audio/video containers are processed."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in SUPPORTED_EXTENSIONS
+
 def get_file_hash(path):
-    """Memory-efficient chunked MD5 hashing."""
     h = hashlib.md5()
     with open(path, 'rb') as f:
         for chunk in iter(lambda: f.read(8192), b''):
@@ -45,15 +54,15 @@ def get_file_hash(path):
     return h.hexdigest()
 
 def cleanup_session(path, delay=600):
-    """Deletes session files after a delay."""
     def _delete():
         time.sleep(delay)
-        gc.collect() # Release any locks before scheduled cleanup
+        gc.collect() 
         if os.path.exists(path):
             shutil.rmtree(path, ignore_errors=True)
     threading.Thread(target=_delete, daemon=True).start()
 
 def get_file_metadata(path):
+    """Retrieves technical specifications of the audio file."""
     try:
         info = sf.info(path)
         return {
@@ -90,19 +99,20 @@ def compare_fingerprints(fp_a, fp_b):
             return round((matches / min_len) * 100, 2)
         from difflib import SequenceMatcher
         return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
-    except: return 0.0
+    except (ValueError, TypeError, AttributeError): 
+        return 0.0
 
 def get_efficient_fingerprint(file_path):
     file_hash = get_file_hash(file_path)
     with _cache_lock:
         if file_hash in FINGERPRINT_CACHE: return FINGERPRINT_CACHE[file_hash]
-    fpcalc_path = shutil.which("fpcalc") or "/opt/homebrew/bin/fpcalc"
+    fpcalc_path = shutil.which("fpcalc") or "/usr/local/bin/fpcalc"
     try:
         cmd = [fpcalc_path, "-plain", file_path]
         fp = subprocess.check_output(cmd, timeout=30).decode().strip()
         with _cache_lock: FINGERPRINT_CACHE[file_hash] = fp
         return fp
-    except: return None
+    except Exception: return None
 
 def get_offset_at_time(y_ref, y_comp, sr, hop_length):
     ref_env = librosa.feature.rms(y=y_ref, hop_length=hop_length)[0]
@@ -114,48 +124,69 @@ def get_offset_at_time(y_ref, y_comp, sr, hop_length):
     return round(float(lag_frame * hop_length / sr * 1000), 2)
 
 def generate_summary(match_score, drift, start_offset):
-    if match_score >= 95:
+    """Generates the text verdict using defined thresholds."""
+    if match_score >= EXACT_MATCH_THRESHOLD:
         content_txt = "Exact match detected."
-    elif match_score >= 15:
+    elif match_score >= DUB_MATCH_THRESHOLD:
         content_txt = "Acoustically related (consistent with a localized dub)."
     else:
         content_txt = "Content DNA mismatch (unrelated audio)."
-    if drift > 30:
+        
+    if drift > MAX_DRIFT_MS:
         sync_txt = f"Significant drift detected ({drift}ms variation)."
-    elif abs(start_offset) > 50:
+    elif abs(start_offset) > MAX_START_OFFSET_MS:
         sync_txt = f"Constant delay of {start_offset}ms detected."
     else:
         sync_txt = "Sync is frame-accurate."
     return f"{content_txt} {sync_txt}"
 
-def analyze_sync(anchor_path, rendition_path, sr=22050, hop_length=512):
+def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
+    """
+    Analyzes temporal sync between two files. 
+    ref_meta is passed in to avoid redundant disk I/O.
+    """
     fp_a = get_efficient_fingerprint(anchor_path)
     fp_b = get_efficient_fingerprint(rendition_path)
     match_score = compare_fingerprints(fp_a, fp_b)
-    ref_meta = get_file_metadata(anchor_path)
+    
     comp_meta = get_file_metadata(rendition_path)
     duration = min(ref_meta['duration'], comp_meta['duration'])
+    
     y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=60)
     y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=60)
+    
     start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
+    
     end_offset = start_offset
     if duration > 120:
         y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=duration-60, duration=60)
         y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=duration-60, duration=60)
         end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
+    
     drift = round(abs(start_offset - end_offset), 2)
     summary = generate_summary(match_score, drift, start_offset)
+    
     issues = []
-    if abs(start_offset) > 50: issues.append(f"Start Offset: {start_offset}ms")
-    if drift > 30: issues.append(f"Drift Detected: {drift}ms variance")
-    if match_score < 15: issues.append(f"DNA Match Low ({match_score}%)")
-    plt.figure(figsize=(10, 4))
-    librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, alpha=0.5, label='Ref')
-    librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, alpha=0.5, label='Comp')
-    plt.title(f"Acoustic Alignment | DNA: {match_score}%")
+    if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Start Offset: {start_offset}ms")
+    if drift > MAX_DRIFT_MS: issues.append(f"Drift Detected: {drift}ms variance")
+    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"DNA Match Low ({match_score}%)")
+    
+    # Visualization: Restored Subplots for better QA visibility
+    plt.figure(figsize=(10, 6))
+    
+    plt.subplot(2, 1, 1)
+    librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.7)
+    plt.title("Reference (First 10s)")
+    
+    plt.subplot(2, 1, 2)
+    librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.7)
+    plt.title(f"Comparison (Offset: {start_offset}ms)")
+    
+    plt.tight_layout()
     buf = BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
     plt.close()
+    
     return {
         "start_offset": start_offset, "end_offset": end_offset, "drift": drift,
         "match_score": match_score, "summary": summary, "issues": issues,
@@ -171,11 +202,9 @@ def index():
 
 @app.route('/clear_cache', methods=['POST'])
 def clear_cache():
-    """Improved cleanup with garbage collection to release file handles."""
     try:
-        gc.collect() # Force release of file handles
+        gc.collect() 
         time.sleep(0.5)
-        
         with _cache_lock:
             FINGERPRINT_CACHE.clear()
 
@@ -202,15 +231,25 @@ def upload_files():
     os.makedirs(analysis_root, exist_ok=True)
     try:
         ref_file = request.files['reference']
-        comp_files = request.files.getlist('comparison[]')
+        if not ref_file or not allowed_file(ref_file.filename):
+            return jsonify({'error': 'Reference file missing or unsupported format'}), 400
+
         ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
+        
+        # Optimization: Scan reference once
+        ref_meta = get_file_metadata(ref_path)
+        
+        comp_files = request.files.getlist('comparison[]')
         results = []
         for f in comp_files:
-            if not f.filename: continue
+            if not f.filename or not allowed_file(f.filename):
+                continue
+            
             f_path = os.path.join(analysis_root, secure_filename(f.filename))
             f.save(f_path)
-            analysis = analyze_sync(ref_path, f_path)
+            
+            analysis = analyze_sync(ref_path, f_path, ref_meta)
             results.append({
                 'filename': f.filename,
                 'offset_ms': analysis['start_offset'],
@@ -224,6 +263,7 @@ def upload_files():
                 'comp_meta': analysis['comp_meta'],
                 'needs_review': len(analysis['issues']) > 0
             })
+        
         cleanup_session(analysis_root)
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
