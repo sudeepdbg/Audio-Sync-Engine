@@ -1,7 +1,6 @@
 import os
 import uuid
 import shutil
-import hashlib
 import numpy as np
 import librosa
 import librosa.display
@@ -10,79 +9,62 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
-import traceback
-import subprocess
 import soundfile as sf
-import time
 import threading
-import gc
 from scipy import signal
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
-
-# --- OPTIONAL ADVANCED LIBRARIES ---
-try:
-    import demucs.separate
-    HAS_DEMUCS = True
-except ImportError:
-    HAS_DEMUCS = False
-
-try:
-    import pyloudnorm as fct
-    HAS_LOUDNORM = True
-except ImportError:
-    HAS_LOUDNORM = False
+from audio_separator.separator import Separator
 
 app = Flask(__name__)
 
-# --- SYSTEM CONFIGURATION ---
+# --- CONFIGURATION ---
 app.config['MAX_CONTENT_LENGTH'] = 800 * 1024 * 1024 
-SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
-
-# --- QUALITY THRESHOLDS ---
-DUB_MATCH_THRESHOLD = 15
-MAX_DRIFT_MS = 30
-MAX_START_OFFSET_MS = 50
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
-if not os.path.exists(MEDIA_VOLATILE_PATH):
-    os.makedirs(MEDIA_VOLATILE_PATH)
+os.makedirs(MEDIA_VOLATILE_PATH, exist_ok=True)
 
-FINGERPRINT_CACHE = {}
-_cache_lock = threading.Lock()
+# --- NEW IMPACT ANALYSIS FUNCTIONS ---
+
+def get_vocal_density(y, sr):
+    """Measures syllables/speech density for Lip-Flap Sync."""
+    if len(y) == 0: return 0
+    # Use onset strength to find 'mouth open/close' events
+    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+    duration = librosa.get_duration(y=y, sr=sr)
+    # Normalized density: Syllables per second
+    density = np.sum(onset_env > (np.max(onset_env) * 0.2)) / (duration + 1e-6)
+    return float(density)
+
+def get_tone_lock_score(y_ref, y_comp):
+    """Compares spectral contrast to verify emotional texture matching."""
+    # Spectral contrast captures the 'brightness' and 'texture' of the performance
+    ref_contrast = np.mean(librosa.feature.spectral_contrast(y=y_ref))
+    comp_contrast = np.mean(librosa.feature.spectral_contrast(y=y_comp))
+    diff = abs(ref_contrast - comp_contrast)
+    score = 100 - (diff * 12) # Empirical scaling for impact
+    return float(max(0, min(100, score)))
+
+def run_vocal_split(file_path, output_dir):
+    """Isolates vocals using local Spleeter-ONNX."""
+    sep = Separator()
+    sep.load_model(model_filename='2stem_vocal_remover.onnx')
+    output_files = sep.separate(file_path)
+    # Construct the path to the generated vocal file
+    vocal_file_path = os.path.join(output_dir, output_files[0])
+    return vocal_file_path
+
+# --- EXISTING UTILS ---
 
 def get_file_metadata(path):
     try:
         info = sf.info(path)
-        return {
-            "sr": f"{info.samplerate} Hz",
-            "duration": info.duration,
-            "duration_str": f"{round(info.duration, 2)}s",
-            "bit_depth": str(info.subtype),
-            "channels": int(info.channels)
-        }
-    except Exception:
-        duration = librosa.get_duration(path=path)
-        y, sr = librosa.load(path, sr=None, duration=1)
-        return {"sr": f"{sr} Hz", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
-
-def classify_audio_quality(file_path):
-    try:
-        data, rate = sf.read(file_path)
-        if len(data.shape) > 1:
-            data = np.mean(data, axis=1)
-        max_val = np.max(np.abs(data))
-        clipping = "Possible Clipping" if max_val > 0.99 else "Clean Peaks"
-        loudness_val = "N/A"
-        if HAS_LOUDNORM:
-            meter = fct.Meter(rate) 
-            loudness_val = f"{round(meter.integrated_loudness(data), 2)} LUFS"
-        return {"lufs": loudness_val, "peak": clipping, "label": "Verified" if max_val > 0.001 else "Silent"}
+        return {"sr": f"{info.samplerate} Hz", "duration": info.duration, "duration_str": f"{round(info.duration, 2)}s", "bit_depth": str(info.subtype), "channels": int(info.channels)}
     except:
-        return {"lufs": "N/A", "peak": "N/A", "label": "Error"}
+        duration = librosa.get_duration(path=path)
+        return {"sr": "N/A", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
 
-def get_offset_at_time(y_ref, y_comp, sr, hop_length):
+def get_offset_at_time(y_ref, y_comp, sr, hop_length=512):
     ref_env = librosa.feature.rms(y=y_ref, hop_length=hop_length)[0]
     comp_env = librosa.feature.rms(y=y_comp, hop_length=hop_length)[0]
     ref_env = (ref_env - ref_env.min()) / (ref_env.max() - ref_env.min() + 1e-10)
@@ -91,95 +73,74 @@ def get_offset_at_time(y_ref, y_comp, sr, hop_length):
     lag_frame = np.argmax(correlation) - (len(ref_env) - 1)
     return round(float(lag_frame * hop_length / sr * 1000), 2)
 
-def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
-    # Fingerprinting
-    fpcalc_path = shutil.which("fpcalc") or "/usr/local/bin/fpcalc"
-    def get_fp(p):
-        try: return subprocess.check_output([fpcalc_path, "-plain", p]).decode().strip()
-        except: return ""
-    
-    fp_a, fp_b = get_fp(anchor_path), get_fp(rendition_path)
-    from difflib import SequenceMatcher
-    match_score = round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
-    
-    comp_meta = get_file_metadata(rendition_path)
-    
-    # Timing Analysis (Start and End for Drift)
-    y_ref_s, _ = librosa.load(anchor_path, sr=sr, duration=20)
-    y_comp_s, _ = librosa.load(rendition_path, sr=sr, duration=20)
-    start_offset = get_offset_at_time(y_ref_s, y_comp_s, sr, hop_length)
-    
-    try:
-        y_ref_e, _ = librosa.load(anchor_path, sr=sr, offset=max(0, ref_meta['duration']-20))
-        y_comp_e, _ = librosa.load(rendition_path, sr=sr, offset=max(0, comp_meta['duration']-20))
-        end_offset = get_offset_at_time(y_ref_e, y_comp_e, sr, hop_length)
-        drift_ms = round(abs(end_offset - start_offset), 2)
-    except:
-        drift_ms = 0.0
-
-    # Plot
-    plt.figure(figsize=(10, 3))
-    librosa.display.waveshow(y_ref_s[:sr*10], sr=sr, color='blue', alpha=0.5, label="Master")
-    librosa.display.waveshow(y_comp_s[:sr*10], sr=sr, color='orange', alpha=0.5, label="Dub")
-    plt.tight_layout()
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-
-    issues = []
-    if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Offset Issue: {start_offset}ms")
-    if drift_ms > MAX_DRIFT_MS: issues.append(f"Drift Issue: {drift_ms}ms")
-    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Content DNA Mismatch ({match_score}%)")
-
-    return {
-        "start_offset": start_offset, "drift_ms": drift_ms, "match_score": match_score,
-        "issues": issues, "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
-        "ref_meta": ref_meta, "comp_meta": comp_meta
-    }
-
 @app.route('/')
 def index(): return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
     session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
-    analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
-    os.makedirs(analysis_root, exist_ok=True)
-    deep_analysis = request.form.get('deepAnalysis') == 'true'
+    work_dir = os.path.join(MEDIA_VOLATILE_PATH, session_id)
+    os.makedirs(work_dir, exist_ok=True)
+    
+    use_vocal_split = request.form.get('vocalSplit') == 'true'
     
     try:
+        # Save Reference
         ref_file = request.files['reference']
-        ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
+        ref_path = os.path.join(work_dir, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
         ref_meta = get_file_metadata(ref_path)
+
+        # Pre-process Reference (Vocal Split)
+        y_ref_full, sr = librosa.load(ref_path, sr=22050)
+        y_ref_analysis = y_ref_full
         
+        if use_vocal_split:
+            vocal_path = run_vocal_split(ref_path, work_dir)
+            y_ref_analysis, _ = librosa.load(vocal_path, sr=22050)
+
         results = []
         for f in request.files.getlist('comparison[]'):
             if not f.filename: continue
-            f_path = os.path.join(analysis_root, secure_filename(f.filename))
+            f_path = os.path.join(work_dir, secure_filename(f.filename))
             f.save(f_path)
             
-            quality = classify_audio_quality(f_path)
-            analysis = analyze_sync(ref_path, f_path, ref_meta)
+            y_comp, _ = librosa.load(f_path, sr=22050)
+            comp_meta = get_file_metadata(f_path)
             
-            summary = "Detection complete. Review metrics for drift." if analysis['issues'] else "Detection complete. Perfectly aligned."
+            # 1. Sync Analysis (Existing)
+            start_offset = get_offset_at_time(y_ref_analysis[:20*sr], y_comp[:20*sr], sr)
             
+            # 2. Impact Analysis (New)
+            dens_ref = get_vocal_density(y_ref_analysis, sr)
+            dens_comp = get_vocal_density(y_comp, sr)
+            # Compare density: Closer to 100 is better
+            lip_flap_score = 100 - (abs(dens_ref - dens_comp) / (dens_ref + 1e-6) * 100)
+            tone_lock_score = get_tone_lock_score(y_ref_analysis, y_comp)
+            
+            # 3. Visualization
+            plt.figure(figsize=(10, 2))
+            librosa.display.waveshow(y_ref_analysis[:10*sr], sr=sr, alpha=0.5, label="Master")
+            librosa.display.waveshow(y_comp[:10*sr], sr=sr, alpha=0.5, label="Dub")
+            plt.axis('off')
+            buf = BytesIO()
+            plt.savefig(buf, format='png', transparent=True)
+            plt.close()
+
             results.append({
                 'filename': f.filename,
-                'offset_ms': float(analysis['start_offset']),
-                'drift_ms': float(analysis['drift_ms']),
-                'match_confidence': float(analysis['match_score']),
-                'issues': analysis['issues'],
-                'visual': analysis['visual'],
-                'ref_meta': analysis['ref_meta'],
-                'comp_meta': analysis['comp_meta'],
-                'quality': quality,
-                'status_summary': summary,
-                'needs_review': bool(analysis['issues'])
+                'offset_ms': start_offset,
+                'lip_flap_sync': round(max(0, lip_flap_score), 2),
+                'tone_lock': round(tone_lock_score, 2),
+                'visual': base64.b64encode(buf.getvalue()).decode('utf-8'),
+                'ref_meta': ref_meta,
+                'comp_meta': comp_meta,
+                'needs_review': lip_flap_score < 80 or abs(start_offset) > 50
             })
+            
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, port=5001)
