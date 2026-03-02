@@ -20,21 +20,17 @@ from scipy import signal
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
 
-# New Advanced Imports
-import demucs.separate
-import essentia.standard as es
-
 app = Flask(__name__)
 
 # --- SYSTEM CONFIGURATION ---
-app.config['MAX_CONTENT_LENGTH'] = 800 * 1024 * 1024 # Increased for Demucs overhead
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
 SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
 
-# --- QUALITY THRESHOLDS ---
-EXACT_MATCH_THRESHOLD = 95
-DUB_MATCH_THRESHOLD = 15
-MAX_DRIFT_MS = 30
-MAX_START_OFFSET_MS = 50
+# --- QUALITY THRESHOLDS (Defined Constants) ---
+EXACT_MATCH_THRESHOLD = 95    # High confidence for identical files
+DUB_MATCH_THRESHOLD = 15      # Min similarity for localized dubs
+MAX_DRIFT_MS = 30             # Perceptibility limit for sync drift
+MAX_START_OFFSET_MS = 50      # Standard broadcast acceptable delay
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
@@ -44,51 +40,10 @@ if not os.path.exists(MEDIA_VOLATILE_PATH):
 FINGERPRINT_CACHE = {}
 _cache_lock = threading.Lock()
 
-# --- ADVANCED UTILITIES ---
-
-def classify_audio_quality(file_path):
-    """Uses Essentia to check for technical quality issues like clipping/dynamic range."""
-    try:
-        # Load audio specifically for Essentia
-        loader = es.MonoLoader(filename=file_path)
-        audio = loader()
-        
-        # Calculate Dynamic Range as a proxy for quality/compression
-        dynamic_range = es.DynamicRange()(audio)
-        
-        # Check for potential digital clipping (samples near 1.0 or -1.0)
-        max_val = np.max(np.abs(audio))
-        clipping = "Possible Clipping" if max_val > 0.98 else "Clean Peaks"
-        
-        return {
-            "dynamic_range": f"{round(dynamic_range, 2)} dB",
-            "peak_status": clipping,
-            "quality_label": "Verified"
-        }
-    except Exception as e:
-        print(f"Quality Check Failed: {e}")
-        return {"quality_label": "Error Scan", "dynamic_range": "N/A", "peak_status": "N/A"}
-
-def isolate_vocals(file_path, output_root):
-    """Uses Demucs to strip background music and effects."""
-    try:
-        # We use 'htdemucs' which is the fastest balanced model
-        # Output will be in output_root/htdemucs/[filename]/vocals.wav
-        demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
-        
-        base_name = os.path.basename(file_path).rsplit('.', 1)[0]
-        vocal_path = os.path.join(output_root, "htdemucs", base_name, "vocals.mp3")
-        
-        if os.path.exists(vocal_path):
-            return vocal_path
-        return file_path # Fallback
-    except Exception as e:
-        print(f"Vocal Isolation Error: {e}")
-        return file_path
-
-# --- EXISTING UTILITIES ---
+# --- UTILITIES ---
 
 def allowed_file(filename):
+    """Ensures only valid audio/video containers are processed."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in SUPPORTED_EXTENSIONS
 
 def get_file_hash(path):
@@ -98,7 +53,16 @@ def get_file_hash(path):
             h.update(chunk)
     return h.hexdigest()
 
+def cleanup_session(path, delay=600):
+    def _delete():
+        time.sleep(delay)
+        gc.collect() 
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+    threading.Thread(target=_delete, daemon=True).start()
+
 def get_file_metadata(path):
+    """Retrieves technical specifications of the audio file."""
     try:
         info = sf.info(path)
         return {
@@ -111,7 +75,15 @@ def get_file_metadata(path):
     except Exception:
         duration = librosa.get_duration(path=path)
         y, sr = librosa.load(path, sr=None, duration=1)
-        return {"sr": f"{sr} Hz", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
+        return {
+            "sr": f"{sr} Hz",
+            "duration": duration,
+            "duration_str": f"{round(duration, 2)}s",
+            "bit_depth": "Compressed/Variable",
+            "channels": "Unknown"
+        }
+
+# --- CORE LOGIC ---
 
 def compare_fingerprints(fp_a, fp_b):
     try:
@@ -127,7 +99,8 @@ def compare_fingerprints(fp_a, fp_b):
             return round((matches / min_len) * 100, 2)
         from difflib import SequenceMatcher
         return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
-    except Exception: return 0.0
+    except (ValueError, TypeError, AttributeError): 
+        return 0.0
 
 def get_efficient_fingerprint(file_path):
     file_hash = get_file_hash(file_path)
@@ -154,14 +127,14 @@ def generate_summary(match_score, drift, start_offset):
     if match_score >= EXACT_MATCH_THRESHOLD:
         content_txt = "Exact match detected."
     elif match_score >= DUB_MATCH_THRESHOLD:
-        content_txt = "Acoustically related (localized dub)."
+        content_txt = "Acoustically related (consistent with a localized dub)."
     else:
-        content_txt = "Content DNA mismatch."
-    
+        content_txt = "Content DNA mismatch (unrelated audio)."
+        
     if drift > MAX_DRIFT_MS:
-        sync_txt = f"Significant drift detected ({drift}ms)."
+        sync_txt = f"Significant drift detected ({drift}ms variation)."
     elif abs(start_offset) > MAX_START_OFFSET_MS:
-        sync_txt = f"Constant delay ({start_offset}ms)."
+        sync_txt = f"Constant delay of {start_offset}ms detected."
     else:
         sync_txt = "Sync is frame-accurate."
     return f"{content_txt} {sync_txt}"
@@ -190,19 +163,20 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     
     issues = []
     if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Start Offset: {start_offset}ms")
-    if drift > MAX_DRIFT_MS: issues.append(f"Drift Detected: {drift}ms")
-    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Low DNA Score ({match_score}%)")
+    if drift > MAX_DRIFT_MS: issues.append(f"Drift Detected: {drift}ms variance")
+    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"DNA Match Low ({match_score}%)")
     
-    plt.figure(figsize=(10, 4))
+    # Visualization: Restored Subplots
+    plt.figure(figsize=(10, 6))
     plt.subplot(2, 1, 1)
     librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.7)
-    plt.title("Reference (10s)")
+    plt.title("Reference (First 10s)")
     plt.subplot(2, 1, 2)
     librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.7)
     plt.title(f"Comparison (Offset: {start_offset}ms)")
     plt.tight_layout()
     buf = BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', bbox_inches='tight')
     plt.close()
     
     return {
@@ -218,25 +192,39 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
 def index():
     return render_template('index.html')
 
+@app.route('/clear_cache', methods=['POST'])
+def clear_cache():
+    try:
+        gc.collect() 
+        time.sleep(0.5)
+        with _cache_lock:
+            FINGERPRINT_CACHE.clear()
+        if os.path.exists(MEDIA_VOLATILE_PATH):
+            for item in os.listdir(MEDIA_VOLATILE_PATH):
+                item_path = os.path.join(MEDIA_VOLATILE_PATH, item)
+                try:
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path, ignore_errors=True)
+                    else:
+                        os.remove(item_path)
+                except Exception: continue
+        return jsonify({'status': 'Volatile storage and cache cleared'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/upload', methods=['POST'])
 def upload_files():
     session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
     analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
     os.makedirs(analysis_root, exist_ok=True)
-    
-    # Capture UI Options
-    deep_analysis = request.form.get('deepAnalysis') == 'true'
-    
     try:
         ref_file = request.files['reference']
+        if not ref_file or not allowed_file(ref_file.filename):
+            return jsonify({'error': 'Reference file missing or unsupported format'}), 400
+
         ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
         ref_meta = get_file_metadata(ref_path)
-        
-        # Determine if we isolate vocals for the Reference
-        ref_to_analyze = ref_path
-        if deep_analysis:
-            ref_to_analyze = isolate_vocals(ref_path, analysis_root)
         
         comp_files = request.files.getlist('comparison[]')
         results = []
@@ -244,18 +232,7 @@ def upload_files():
             if not f.filename or not allowed_file(f.filename): continue
             f_path = os.path.join(analysis_root, secure_filename(f.filename))
             f.save(f_path)
-            
-            # 1. Quality Classification (Always run as it's fast)
-            quality_report = classify_audio_quality(f_path)
-            
-            # 2. Vocal DNA mode
-            comp_to_analyze = f_path
-            if deep_analysis:
-                comp_to_analyze = isolate_vocals(f_path, analysis_root)
-            
-            # 3. Sync Analysis
-            analysis = analyze_sync(ref_to_analyze, comp_to_analyze, ref_meta)
-            
+            analysis = analyze_sync(ref_path, f_path, ref_meta)
             results.append({
                 'filename': f.filename,
                 'offset_ms': analysis['start_offset'],
@@ -267,11 +244,9 @@ def upload_files():
                 'visual': analysis['visual'],
                 'ref_meta': analysis['ref_meta'],
                 'comp_meta': analysis['comp_meta'],
-                'quality': quality_report,
-                'deep_mode_active': deep_analysis,
                 'needs_review': len(analysis['issues']) > 0
             })
-            
+        cleanup_session(analysis_root)
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
         traceback.print_exc()
