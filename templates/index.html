@@ -4,52 +4,63 @@
     <meta charset="UTF-8">
     <title>Audio Sync Engine Pro</title>
     <style>
-        * { box-sizing: border-box; margin: 0; font-family: 'Inter', sans-serif; }
+        * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
         body { background: #f1f5f9; padding: 2rem; color: #1e293b; }
         .container { max-width: 1100px; margin: auto; }
         .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2rem; margin-bottom: 2rem; }
         .upload-section { display: flex; gap: 2rem; margin-bottom: 2rem; }
         .upload-box { flex: 1; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; padding: 1.5rem; text-align: center; }
-        .file-input-label { display: inline-block; background: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; margin-top: 10px; }
+        .file-input-label { display: inline-block; background: #2563eb; color: white; padding: 0.5rem 1.2rem; border-radius: 20px; cursor: pointer; margin-top: 10px; font-weight: 500; }
         input[type="file"] { display: none; }
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; }
-        .status-badge { float: right; padding: 0.4rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
+        
+        /* New Toggle Style */
+        .toggle-container { background: #eff6ff; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; border: 1px solid #dbeafe; }
+        
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; position: relative; }
+        .status-badge { position: absolute; top: 20px; right: 20px; padding: 0.4rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.75rem; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-review { background: #fee2e2; color: #991b1b; }
-        .summary-bar { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1rem; margin: 1rem 0; color: #0369a1; border-radius: 4px; }
-        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+        
+        .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
         .metric-card { background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; }
-        .metric-label { font-size: 0.7rem; text-transform: uppercase; color: #64748b; font-weight: bold; }
-        .metric-value { font-size: 1.2rem; font-weight: 800; margin-top: 4px; }
-        .prop-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
-        .prop-table th, .prop-table td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
-        .prop-table th { background: #f8fafc; color: #64748b; }
-        .waveform-img { width: 100%; border-radius: 12px; margin-top: 1rem; }
-        .primary-btn { background: #2563eb; color: white; border: none; padding: 0.8rem 2rem; border-radius: 40px; cursor: pointer; font-weight: bold; }
-        #loading { display: none; margin-right: 15px; }
+        .metric-label { font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: bold; letter-spacing: 0.05em; }
+        .metric-value { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
+        
+        .waveform-img { width: 100%; border-radius: 12px; margin-top: 1rem; background: #0f172a; padding: 10px; }
+        .primary-btn { background: #2563eb; color: white; border: none; padding: 0.8rem 2.5rem; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .primary-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+        #loading { display: none; margin-right: 15px; font-weight: 500; color: #2563eb; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <h1>🎧 Sync Engine</h1>
+            <h1>🎙️ Sync Engine Pro</h1>
+            <p style="color: #64748b; margin-bottom: 2rem;">Production-grade audio alignment and emotional tone validation.</p>
+            
+            <div class="toggle-container">
+                <input type="checkbox" id="vocalSplit" style="display: block; width: 20px; height: 20px;">
+                <label for="vocalSplit" style="font-weight: 600; color: #1e40af;">Enable Neural Vocal Isolation (Handles background music)</label>
+            </div>
+
             <div class="upload-section">
                 <div class="upload-box">
                     <h3>📌 Master</h3>
-                    <label for="refFile" class="file-input-label">Select Master</label>
+                    <label for="refFile" class="file-input-label">Upload Master</label>
                     <input type="file" id="refFile">
-                    <div id="refName" style="font-size: 0.8rem; margin-top: 8px;"></div>
+                    <div id="refName" style="font-size: 0.8rem; margin-top: 8px; font-style: italic;"></div>
                 </div>
                 <div class="upload-box">
                     <h3>🔁 Dubs</h3>
-                    <label for="compFiles" class="file-input-label">Select Dubs</label>
+                    <label for="compFiles" class="file-input-label">Upload Dubs</label>
                     <input type="file" id="compFiles" multiple>
-                    <div id="compCount" style="font-size: 0.8rem; margin-top: 8px;"></div>
+                    <div id="compCount" style="font-size: 0.8rem; margin-top: 8px; font-style: italic;"></div>
                 </div>
             </div>
+            
             <div style="text-align: right;">
-                <span id="loading">Processing...</span>
-                <button class="primary-btn" onclick="uploadFiles()">Start Analysis</button>
+                <span id="loading">🧬 Analyzing Audio Waves...</span>
+                <button class="primary-btn" onclick="uploadFiles()">Run Impact Analysis</button>
             </div>
         </div>
         <div id="results"></div>
@@ -57,48 +68,64 @@
 
     <script>
         document.getElementById('refFile').onchange = e => document.getElementById('refName').innerText = e.target.files[0].name;
-        document.getElementById('compFiles').onchange = e => document.getElementById('compCount').innerText = `${e.target.files.length} files`;
+        document.getElementById('compFiles').onchange = e => document.getElementById('compCount').innerText = `${e.target.files.length} files selected`;
 
         async function uploadFiles() {
             const formData = new FormData();
-            formData.append('reference', document.getElementById('refFile').files[0]);
-            for(let f of document.getElementById('compFiles').files) formData.append('comparison[]', f);
+            const ref = document.getElementById('refFile').files[0];
+            const comps = document.getElementById('compFiles').files;
+            const split = document.getElementById('vocalSplit').checked;
+
+            if(!ref || comps.length === 0) return alert("Please select both Master and Dub files.");
+
+            formData.append('reference', ref);
+            formData.append('vocalSplit', split);
+            for(let f of comps) formData.append('comparison[]', f);
             
             document.getElementById('loading').style.display = 'inline';
-            const res = await fetch('/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            document.getElementById('loading').style.display = 'none';
-            
-            let html = `<h2>Master: ${data.reference}</h2>`;
-            data.results.forEach(r => {
-                html += `
-                <div class="result-item">
-                    <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ REVIEW' : '✅ PASSED'}</span>
-                    <h3>${r.filename}</h3>
-                    <div class="summary-bar">${r.status_summary}</div>
-                    
-                    <div class="metric-grid">
-                        <div class="metric-card"><div class="metric-label">Start Offset</div><div class="metric-value">${r.offset_ms}ms</div></div>
-                        <div class="metric-card"><div class="metric-label">Sync Drift</div><div class="metric-value" style="color:${r.drift_ms > 30 ? 'red':'green'}">${r.drift_ms}ms</div></div>
-                        <div class="metric-card"><div class="metric-label">DNA Match</div><div class="metric-value">${r.match_confidence}%</div></div>
-                        <div class="metric-card">
-                            <div class="metric-label">Audio Quality</div>
-                            <div class="metric-value">${r.quality.label}</div>
-                            <div style="font-size:0.7rem; color:#64748b;">${r.quality.lufs} | ${r.quality.peak}</div>
-                        </div>
-                    </div>
+            document.getElementById('results').innerHTML = '';
 
-                    <table class="prop-table">
-                        <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
-                        <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
-                        <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td>${r.comp_meta.channels}</td></tr>
-                        <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
-                        <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
-                    </table>
-                    <img class="waveform-img" src="data:image/png;base64,${r.visual}">
-                </div>`;
-            });
-            document.getElementById('results').innerHTML = html;
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                document.getElementById('loading').style.display = 'none';
+                
+                let html = `<h2 style="margin-bottom:1rem;">Master Analysis: ${data.reference}</h2>`;
+                data.results.forEach(r => {
+                    html += `
+                    <div class="result-item">
+                        <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ NEEDS REVIEW' : '✅ PASSED'}</span>
+                        <h3 style="margin-bottom:10px;">${r.filename}</h3>
+                        
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Start Offset</div>
+                                <div class="metric-value" style="color:${Math.abs(r.offset_ms) > 50 ? '#b91c1c' : '#1e293b'}">${r.offset_ms}ms</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Lip-Flap Sync</div>
+                                <div class="metric-value" style="color:${r.lip_flap_sync < 80 ? '#b91c1c' : '#16a34a'}">${r.lip_flap_sync}%</div>
+                                <p style="font-size:10px; color:#94a3b8; margin-top:5px;">Vocal Density Accuracy</p>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Tone Lock</div>
+                                <div class="metric-value" style="color:${r.tone_lock < 75 ? '#d97706' : '#2563eb'}">${r.tone_lock}%</div>
+                                <p style="font-size:10px; color:#94a3b8; margin-top:5px;">Emotional Texture Match</p>
+                            </div>
+                        </div>
+
+                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
+                        
+                        <div style="margin-top:15px; font-size: 0.85rem; color: #64748b;">
+                            <strong>Properties:</strong> Dub Duration: ${r.comp_meta.duration_str} | Sample Rate: ${r.comp_meta.sr}
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('results').innerHTML = html;
+            } catch (err) {
+                alert("Analysis failed. Check console for details.");
+                document.getElementById('loading').style.display = 'none';
+            }
         }
     </script>
 </body>
