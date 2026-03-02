@@ -14,176 +14,250 @@ import traceback
 import subprocess
 import soundfile as sf
 import time
+import threading
+import gc
+from scipy import signal
+from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__)
-
-# --- CONFIGURATION ---
-UPLOAD_FOLDER = 'uploads'
-ANALYSIS_FOLDER = 'analysis'
-SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
-[os.makedirs(d, exist_ok=True) for d in [UPLOAD_FOLDER, ANALYSIS_FOLDER]]
-
+# --- OPTIONAL ADVANCED LIBRARIES ---
 try:
     import demucs.separate
     HAS_DEMUCS = True
 except ImportError:
     HAS_DEMUCS = False
-    print("⚠️ Warning: Demucs not found. Vocal DNA mode disabled.")
+    print("⚠️ Warning: Demucs not found. Vocal DNA mode will be disabled.")
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in SUPPORTED_EXTENSIONS
+try:
+    import pyloudnorm as fct
+    HAS_LOUDNORM = True
+except ImportError:
+    HAS_LOUDNORM = False
+    print("⚠️ Warning: pyloudnorm not found. Quality scanning will be limited.")
 
-# --- CORE LOGIC ---
+app = Flask(__name__)
 
-def isolate_vocals(file_path, output_root):
-    """Isolates vocals using Demucs with path verification."""
-    if not HAS_DEMUCS:
-        return file_path, False
-    
+# --- SYSTEM CONFIGURATION ---
+app.config['MAX_CONTENT_LENGTH'] = 800 * 1024 * 1024 
+SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
+
+# --- QUALITY THRESHOLDS ---
+EXACT_MATCH_THRESHOLD = 95
+DUB_MATCH_THRESHOLD = 15
+MAX_DRIFT_MS = 30
+MAX_START_OFFSET_MS = 50
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
+if not os.path.exists(MEDIA_VOLATILE_PATH):
+    os.makedirs(MEDIA_VOLATILE_PATH)
+
+FINGERPRINT_CACHE = {}
+_cache_lock = threading.Lock()
+
+# --- UTILITIES ---
+
+def classify_audio_quality(file_path):
+    """Resilient quality scan."""
     try:
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
-        # Demucs version-specific pathing can vary; we check the most common htdemucs output
-        vocal_path = os.path.join(output_root, "htdemucs", base_name, "vocals.mp3")
-        
-        if not os.path.exists(vocal_path):
-            print(f"🧬 Running Demucs on: {base_name}...")
-            subprocess.run(["demucs", "--mp3", "-o", output_root, file_path], check=True, capture_output=True)
-        
-        if os.path.exists(vocal_path):
-            return vocal_path, True
-        else:
-            print(f"⚠️ Warning: Demucs output not found at {vocal_path}. Falling back.")
-            return file_path, False
-    except Exception as e:
-        print(f"❌ Demucs Error: {e}")
-        return file_path, False
-
-def get_offset(y_ref, y_comp, sr):
-    correlation = np.correlate(y_ref, y_comp, mode='full')
-    return (np.argmax(correlation) - len(y_comp) + 1) / sr * 1000
-
-def analyze_sync(ref_path, comp_path):
-    """Calculates offset and drift with explicit error handling."""
-    try:
-        # Load Start (First 20s)
-        y_ref_start, sr = librosa.load(ref_path, duration=20)
-        y_comp_start, _ = librosa.load(comp_path, duration=20)
-        start_offset = round(get_offset(y_ref_start, y_comp_start, sr), 2)
-        
-        # Load End (Last 20s)
-        try:
-            duration_ref = librosa.get_duration(path=ref_path)
-            duration_comp = librosa.get_duration(path=comp_path)
+        data, rate = sf.read(file_path)
+        if len(data.shape) > 1:
+            data = np.mean(data, axis=1) # Convert to mono for analysis
             
-            # Only attempt drift if file is long enough
-            if min(duration_ref, duration_comp) > 40:
-                y_ref_end, _ = librosa.load(ref_path, offset=duration_ref-20, duration=20)
-                y_comp_end, _ = librosa.load(comp_path, offset=duration_comp-20, duration=20)
-                end_offset = get_offset(y_ref_end, y_comp_end, sr)
-                drift_ms = round(abs(end_offset - start_offset), 2)
-            else:
-                drift_ms = 0.0
-        except Exception as e:
-            print(f"⚠️ End-offset analysis failed: {e}")
-            drift_ms = None # Signal "N/A" to UI
-            
-        return start_offset, drift_ms
-    except Exception as e:
-        print(f"❌ Sync Analysis Error: {e}")
-        return 0.0, None
+        max_val = np.max(np.abs(data))
+        clipping = "Possible Clipping" if max_val > 0.99 else "Clean Peaks"
+        
+        loudness_val = "N/A"
+        if HAS_LOUDNORM:
+            meter = fct.Meter(rate) 
+            loudness_val = f"{round(meter.integrated_loudness(data), 2)} LUFS"
+        
+        is_silent = "Silent" if max_val < 0.001 else "Verified"
 
-def classify_audio_quality(file_path, chunk_duration=30):
-    """Memory-efficient quality analysis using chunked reading."""
-    try:
-        info = sf.info(file_path)
-        max_frames = int(info.samplerate * chunk_duration)
-        
-        with sf.SoundFile(file_path) as f:
-            data = f.read(frames=min(max_frames, len(f)), dtype='float32')
-        
-        rms = np.sqrt(np.mean(data**2))
-        lufs = 20 * np.log10(rms + 1e-9) # Simplified loudness
-        peak = np.max(np.abs(data))
-        
         return {
-            "quality_label": "Verified" if lufs > -27 else "Low Volume",
-            "peak_status": "Clean Peaks" if peak < 0.98 else "CLIPPING",
-            "dynamic_range": f"{round(lufs, 2)} LUFS"
+            "dynamic_range": loudness_val,
+            "peak_status": clipping,
+            "quality_label": is_silent
         }
     except Exception as e:
-        print(f"❌ Quality Scan Error: {e}")
-        return {"quality_label": "Error", "peak_status": "Unknown", "dynamic_range": "N/A"}
+        return {"quality_label": "Scan Error", "dynamic_range": "N/A", "peak_status": "N/A"}
 
-def cleanup_session(path):
-    if os.path.exists(path):
-        shutil.rmtree(path)
+def isolate_vocals(file_path, output_root):
+    """Neural separation (only runs if Demucs is installed)."""
+    if not HAS_DEMUCS:
+        return file_path
+    
+    try:
+        demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
+        base_name = os.path.basename(file_path).rsplit('.', 1)[0]
+        vocal_path = os.path.join(output_root, "htdemucs", base_name, "vocals.mp3")
+        return vocal_path if os.path.exists(vocal_path) else file_path
+    except Exception:
+        return file_path
+
+def get_file_hash(path):
+    h = hashlib.md5()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+def get_file_metadata(path):
+    try:
+        info = sf.info(path)
+        return {
+            "sr": f"{info.samplerate} Hz",
+            "duration": info.duration,
+            "duration_str": f"{round(info.duration, 2)}s",
+            "bit_depth": info.subtype,
+            "channels": info.channels
+        }
+    except Exception:
+        duration = librosa.get_duration(path=path)
+        y, sr = librosa.load(path, sr=None, duration=1)
+        return {"sr": f"{sr} Hz", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
+
+def get_efficient_fingerprint(file_path):
+    file_hash = get_file_hash(file_path)
+    with _cache_lock:
+        if file_hash in FINGERPRINT_CACHE: return FINGERPRINT_CACHE[file_hash]
+    
+    fpcalc_path = shutil.which("fpcalc") or "/usr/local/bin/fpcalc"
+    try:
+        cmd = [fpcalc_path, "-plain", file_path]
+        fp = subprocess.check_output(cmd, timeout=30).decode().strip()
+        with _cache_lock: FINGERPRINT_CACHE[file_hash] = fp
+        return fp
+    except Exception: return None
+
+def compare_fingerprints(fp_a, fp_b):
+    try:
+        if not fp_a or not fp_b: return 0.0
+        if fp_a == fp_b: return 100.0
+        from difflib import SequenceMatcher
+        return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
+    except Exception: return 0.0
+
+def get_offset_at_time(y_ref, y_comp, sr, hop_length):
+    ref_env = librosa.feature.rms(y=y_ref, hop_length=hop_length)[0]
+    comp_env = librosa.feature.rms(y=y_comp, hop_length=hop_length)[0]
+    ref_env = (ref_env - ref_env.min()) / (ref_env.max() - ref_env.min() + 1e-10)
+    comp_env = (comp_env - comp_env.min()) / (comp_env.max() - comp_env.min() + 1e-10)
+    correlation = signal.correlate(comp_env, ref_env, mode='full')
+    lag_frame = np.argmax(correlation) - (len(ref_env) - 1)
+    return round(float(lag_frame * hop_length / sr * 1000), 2)
+
+def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
+    fp_a = get_efficient_fingerprint(anchor_path)
+    fp_b = get_efficient_fingerprint(rendition_path)
+    match_score = compare_fingerprints(fp_a, fp_b)
+    
+    comp_meta = get_file_metadata(rendition_path)
+    
+    # Load 30s segments for offset analysis
+    y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=30)
+    y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=30)
+    
+    start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
+    
+    # Calculate drift (comparing end-of-file segments)
+    try:
+        y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=max(0, ref_meta['duration']-30))
+        y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=max(0, comp_meta['duration']-30))
+        end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
+        drift_ms = round(abs(end_offset - start_offset), 2)
+    except:
+        drift_ms = 0.0
+
+    # Visualization
+    plt.figure(figsize=(10, 3))
+    librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.5, label="Master")
+    librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.5, label="Dub")
+    plt.title(f"Alignment View (Offset: {start_offset}ms)")
+    plt.tight_layout()
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    
+    issues = []
+    if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Offset Issue: {start_offset}ms")
+    if drift_ms > MAX_DRIFT_MS: issues.append(f"Drift Issue: {drift_ms}ms over duration")
+    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Content DNA Mismatch ({match_score}%)")
+    
+    return {
+        "start_offset": start_offset, 
+        "drift_ms": drift_ms,
+        "match_score": match_score, 
+        "issues": issues,
+        "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
+        "ref_meta": ref_meta, 
+        "comp_meta": comp_meta
+    }
+
+# --- ROUTES ---
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/clear_cache', methods=['POST'])
+def clear_cache():
+    try:
+        gc.collect()
+        time.sleep(0.5)
+        with _cache_lock: FINGERPRINT_CACHE.clear()
+        if os.path.exists(MEDIA_VOLATILE_PATH):
+            shutil.rmtree(MEDIA_VOLATILE_PATH, ignore_errors=True)
+            os.makedirs(MEDIA_VOLATILE_PATH)
+        return jsonify({'status': 'Cleared'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/upload', methods=['POST'])
-def upload():
-    session_id = str(uuid.uuid4())
-    analysis_root = os.path.join(ANALYSIS_FOLDER, session_id)
+def upload_files():
+    session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
+    analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
     os.makedirs(analysis_root, exist_ok=True)
     
+    deep_analysis = request.form.get('deepAnalysis') == 'true'
+    
     try:
-        ref_file = request.files.get('reference')
-        comp_files = request.files.getlist('comparison[]')
-        deep_analysis = request.form.get('deepAnalysis') == 'true'
-
-        if not ref_file or not allowed_file(ref_file.filename):
-            return jsonify({'error': 'Invalid Master file'}), 400
-
-        ref_path = os.path.join(analysis_root, "master_" + ref_file.filename)
+        ref_file = request.files['reference']
+        ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
-
-        # 1. Pre-process Reference for Deep Mode (Once per request)
-        active_ref, ref_is_vocal = isolate_vocals(ref_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else (ref_path, False)
-
+        ref_meta = get_file_metadata(ref_path)
+        
+        ref_to_analyze = isolate_vocals(ref_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else ref_path
+        
+        comp_files = request.files.getlist('comparison[]')
         results = []
         for f in comp_files:
-            if not f.filename or not allowed_file(f.filename):
-                continue
-                
-            comp_path = os.path.join(analysis_root, f.filename)
-            f.save(comp_path)
+            if not f.filename: continue
+            f_path = os.path.join(analysis_root, secure_filename(f.filename))
+            f.save(f_path)
             
-            # 2. Process Dub for Deep Mode
-            active_comp, comp_is_vocal = isolate_vocals(comp_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else (comp_path, False)
+            quality_report = classify_audio_quality(f_path)
+            comp_to_analyze = isolate_vocals(f_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else f_path
             
-            # 3. Analyze
-            offset, drift = analyze_sync(active_ref, active_comp)
-            quality = classify_audio_quality(comp_path)
+            analysis = analyze_sync(ref_to_analyze, comp_to_analyze, ref_meta)
             
-            # Content DNA (Match Confidence)
-            y_ref, sr = librosa.load(active_ref, duration=10)
-            y_comp, _ = librosa.load(active_comp, duration=10)
-            conf = round(np.corrcoef(librosa.feature.melspectrogram(y=y_ref, sr=sr).flatten(), 
-                                    librosa.feature.melspectrogram(y=y_comp, sr=sr).flatten())[0,1] * 100, 2)
-
             results.append({
                 'filename': f.filename,
-                'offset_ms': offset,
-                'drift_ms': drift if drift is not None else "undefined",
-                'match_confidence': max(0, conf),
-                'quality': quality,
-                'needs_review': abs(offset) > 50 or (drift is not None and drift > 30) or conf < 15,
-                'deep_mode_active': comp_is_vocal
+                'offset_ms': analysis['start_offset'],
+                'drift_ms': analysis['drift_ms'],
+                'match_confidence': analysis['match_score'],
+                'issues': analysis['issues'],
+                'visual': analysis['visual'],
+                'ref_meta': analysis['ref_meta'],
+                'comp_meta': analysis['comp_meta'],
+                'quality': quality_report,
+                'deep_mode_active': deep_analysis and HAS_DEMUCS,
+                'needs_review': len(analysis['issues']) > 0
             })
-
+            
         return jsonify({'reference': ref_file.filename, 'results': results})
-
     except Exception as e:
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-    finally:
-        # Cleanup can be tricky if you want to keep files for the UI to show. 
-        # Usually, we'd clean up after a timeout, but for now, we'll keep the session 
-        # until the next 'Clear Cache' button press or manual wipe.
-        pass
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5001)
