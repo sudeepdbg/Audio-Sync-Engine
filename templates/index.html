@@ -1,281 +1,231 @@
-import os
-import uuid
-import shutil
-import hashlib
-import numpy as np
-import librosa
-import librosa.display
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import base64
-from io import BytesIO
-import traceback
-import subprocess
-import soundfile as sf
-import time
-import threading
-import gc
-from scipy import signal
-from werkzeug.utils import secure_filename
-from flask import Flask, request, jsonify, render_template
-
-# New Advanced Imports
-import demucs.separate
-import essentia.standard as es
-
-app = Flask(__name__)
-
-# --- SYSTEM CONFIGURATION ---
-app.config['MAX_CONTENT_LENGTH'] = 800 * 1024 * 1024 # Increased for Demucs overhead
-SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
-
-# --- QUALITY THRESHOLDS ---
-EXACT_MATCH_THRESHOLD = 95
-DUB_MATCH_THRESHOLD = 15
-MAX_DRIFT_MS = 30
-MAX_START_OFFSET_MS = 50
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
-if not os.path.exists(MEDIA_VOLATILE_PATH):
-    os.makedirs(MEDIA_VOLATILE_PATH)
-
-FINGERPRINT_CACHE = {}
-_cache_lock = threading.Lock()
-
-# --- ADVANCED UTILITIES ---
-
-def classify_audio_quality(file_path):
-    """Uses Essentia to check for technical quality issues like clipping/dynamic range."""
-    try:
-        # Load audio specifically for Essentia
-        loader = es.MonoLoader(filename=file_path)
-        audio = loader()
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Sync Engine Pro</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
+        body { background: #f1f5f9; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; color: #1e293b; }
+        .container { max-width: 1100px; width: 100%; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; }
+        h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
+        .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
         
-        # Calculate Dynamic Range as a proxy for quality/compression
-        dynamic_range = es.DynamicRange()(audio)
+        .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
+        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; text-align: center; }
+        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
+        input[type="file"] { display: none; }
         
-        # Check for potential digital clipping (samples near 1.0 or -1.0)
-        max_val = np.max(np.abs(audio))
-        clipping = "Possible Clipping" if max_val > 0.98 else "Clean Peaks"
+        /* Final Verdict Table Styling */
+        .verdict-container { margin: 1.5rem 0; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .verdict-header { background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; }
+        .verdict-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .verdict-table th { background: #f1f5f9; text-align: left; padding: 12px; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .verdict-table td { padding: 12px; border-top: 1px solid #f1f5f9; vertical-align: middle; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
+        .pill-pass { background: #dcfce7; color: #166534; }
+        .pill-fail { background: #fee2e2; color: #991b1b; }
+
+        .deep-mode-container { margin: 1.5rem 0; padding: 1.25rem; background: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd; display: flex; align-items: flex-start; gap: 12px; }
+        #deepAnalysis { width: 20px; height: 20px; cursor: pointer; margin-top: 3px; }
+        .deep-text h4 { color: #0369a1; font-size: 0.95rem; margin-bottom: 4px; }
+        .deep-text p { font-size: 0.8rem; color: #0c4a6e; line-height: 1.4; }
+
+        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .primary-btn:hover { background: #1d4ed8; }
+        .primary-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
+
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; position: relative; }
+        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-review { background: #fee2e2; color: #991b1b; }
         
-        return {
-            "dynamic_range": f"{round(dynamic_range, 2)} dB",
-            "peak_status": clipping,
-            "quality_label": "Verified"
+        .prop-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; display: none; }
+        .prop-table th { background: #f8fafc; color: #64748b; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .prop-table td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .mismatch { color: #e11d48; font-weight: 700; background: #fff1f2; }
+        .details-toggle { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.8rem; font-weight: 600; text-decoration: underline; margin-bottom: 1rem; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .stat-card { background: #f8fafc; padding: 1.25rem; border-radius: 12px; border: 1px solid #f1f5f9; }
+        .stat-label { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .stat-value { color: #1e293b; font-size: 1.1rem; font-weight: 800; }
+        .stat-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; font-weight: 500; }
+        
+        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
+        .issue-list { margin: 0; color: #be123c; font-size: 0.9rem; }
+
+        #loading { display: none; align-items: center; gap: 10px; color: #2563eb; font-weight: 700; }
+        .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🎧 Sync Engine</h1>
+            <p class="subtitle">Broadcast temporal alignment and Content DNA verification.</p>
+            
+            <div class="upload-section">
+                <div class="upload-box">
+                    <h3>📌 Master</h3>
+                    <label for="refFile" class="file-input-label">Select Master</label>
+                    <input type="file" id="refFile" accept=".wav,.mp3,.m4a,.flac,.aac,.mp4">
+                    <div id="refFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                </div>
+                <div class="upload-box">
+                    <h3>🔁 Dubs</h3>
+                    <label for="compFiles" class="file-input-label">Select Dubs</label>
+                    <input type="file" id="compFiles" multiple accept=".wav,.mp3,.m4a,.flac,.aac,.mp4">
+                    <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                </div>
+            </div>
+
+            <div class="deep-mode-container">
+                <input type="checkbox" id="deepAnalysis">
+                <div class="deep-text">
+                    <h4>🚀 Neural Vocal Isolation (Vocal DNA Mode)</h4>
+                    <p>Use this for comparing a dialogue-only Dub against a full Master. It isolates speech from background music to ensure accurate sync scores.</p>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; gap: 1rem; align-items: center;">
+                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
+                <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
+                <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
+            </div>
+        </div>
+        <div id="results" class="card" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('refFile').addEventListener('change', function() { 
+            document.getElementById('refFileList').innerText = this.files[0]?.name || ''; 
+        });
+        document.getElementById('compFiles').addEventListener('change', function() { 
+            document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; 
+        });
+
+        async function clearCache() {
+            if (!confirm("Delete all session fingerprints and neural cache?")) return;
+            const res = await fetch('/clear_cache', { method: 'POST' });
+            location.reload(); 
         }
-    except Exception as e:
-        print(f"Quality Check Failed: {e}")
-        return {"quality_label": "Error Scan", "dynamic_range": "N/A", "peak_status": "N/A"}
 
-def isolate_vocals(file_path, output_root):
-    """Uses Demucs to strip background music and effects."""
-    try:
-        # We use 'htdemucs' which is the fastest balanced model
-        # Output will be in output_root/htdemucs/[filename]/vocals.wav
-        demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
-        
-        base_name = os.path.basename(file_path).rsplit('.', 1)[0]
-        vocal_path = os.path.join(output_root, "htdemucs", base_name, "vocals.mp3")
-        
-        if os.path.exists(vocal_path):
-            return vocal_path
-        return file_path # Fallback
-    except Exception as e:
-        print(f"Vocal Isolation Error: {e}")
-        return file_path
+        async function uploadFiles() {
+            const refInput = document.getElementById('refFile');
+            const compInput = document.getElementById('compFiles');
+            const deepMode = document.getElementById('deepAnalysis').checked;
 
-# --- EXISTING UTILITIES ---
+            if (!refInput.files.length || !compInput.files.length) return alert('Please select both Master and Dub files.');
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in SUPPORTED_EXTENSIONS
+            const formData = new FormData();
+            formData.append('reference', refInput.files[0]);
+            formData.append('deepAnalysis', deepMode);
+            for (let f of compInput.files) formData.append('comparison[]', f);
 
-def get_file_hash(path):
-    h = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(8192), b''):
-            h.update(chunk)
-    return h.hexdigest()
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('checkBtn').disabled = true;
+            document.getElementById('results').style.display = 'none';
 
-def get_file_metadata(path):
-    try:
-        info = sf.info(path)
-        return {
-            "sr": f"{info.samplerate} Hz",
-            "duration": info.duration,
-            "duration_str": f"{round(info.duration, 2)}s",
-            "bit_depth": info.subtype,
-            "channels": info.channels
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
+                displayResults(data);
+            } catch (e) { 
+                alert("Analysis failed: " + e.message); 
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('checkBtn').disabled = false;
+            }
         }
-    except Exception:
-        duration = librosa.get_duration(path=path)
-        y, sr = librosa.load(path, sr=None, duration=1)
-        return {"sr": f"{sr} Hz", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
 
-def compare_fingerprints(fp_a, fp_b):
-    try:
-        if not fp_a or not fp_b: return 0.0
-        fp_a, fp_b = fp_a.strip(), fp_b.strip()
-        if fp_a == fp_b: return 100.0
-        if ',' in fp_a:
-            list_a = [int(x) for x in fp_a.split(',') if x.strip()]
-            list_b = [int(x) for x in fp_b.split(',') if x.strip()]
-            min_len = min(len(list_a), len(list_b))
-            if min_len == 0: return 0.0
-            matches = sum(1 for a, b in zip(list_a[:min_len], list_b[:min_len]) if a == b)
-            return round((matches / min_len) * 100, 2)
-        from difflib import SequenceMatcher
-        return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
-    except Exception: return 0.0
-
-def get_efficient_fingerprint(file_path):
-    file_hash = get_file_hash(file_path)
-    with _cache_lock:
-        if file_hash in FINGERPRINT_CACHE: return FINGERPRINT_CACHE[file_hash]
-    fpcalc_path = shutil.which("fpcalc") or "/usr/local/bin/fpcalc"
-    try:
-        cmd = [fpcalc_path, "-plain", file_path]
-        fp = subprocess.check_output(cmd, timeout=30).decode().strip()
-        with _cache_lock: FINGERPRINT_CACHE[file_hash] = fp
-        return fp
-    except Exception: return None
-
-def get_offset_at_time(y_ref, y_comp, sr, hop_length):
-    ref_env = librosa.feature.rms(y=y_ref, hop_length=hop_length)[0]
-    comp_env = librosa.feature.rms(y=y_comp, hop_length=hop_length)[0]
-    ref_env = (ref_env - ref_env.min()) / (ref_env.max() - ref_env.min() + 1e-10)
-    comp_env = (comp_env - comp_env.min()) / (comp_env.max() - comp_env.min() + 1e-10)
-    correlation = signal.correlate(comp_env, ref_env, mode='full')
-    lag_frame = np.argmax(correlation) - (len(ref_env) - 1)
-    return round(float(lag_frame * hop_length / sr * 1000), 2)
-
-def generate_summary(match_score, drift, start_offset):
-    if match_score >= EXACT_MATCH_THRESHOLD:
-        content_txt = "Exact match detected."
-    elif match_score >= DUB_MATCH_THRESHOLD:
-        content_txt = "Acoustically related (localized dub)."
-    else:
-        content_txt = "Content DNA mismatch."
-    
-    if drift > MAX_DRIFT_MS:
-        sync_txt = f"Significant drift detected ({drift}ms)."
-    elif abs(start_offset) > MAX_START_OFFSET_MS:
-        sync_txt = f"Constant delay ({start_offset}ms)."
-    else:
-        sync_txt = "Sync is frame-accurate."
-    return f"{content_txt} {sync_txt}"
-
-def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
-    fp_a = get_efficient_fingerprint(anchor_path)
-    fp_b = get_efficient_fingerprint(rendition_path)
-    match_score = compare_fingerprints(fp_a, fp_b)
-    
-    comp_meta = get_file_metadata(rendition_path)
-    duration = min(ref_meta['duration'], comp_meta['duration'])
-    
-    y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=60)
-    y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=60)
-    
-    start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
-    
-    end_offset = start_offset
-    if duration > 120:
-        y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=duration-60, duration=60)
-        y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=duration-60, duration=60)
-        end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
-    
-    drift = round(abs(start_offset - end_offset), 2)
-    summary = generate_summary(match_score, drift, start_offset)
-    
-    issues = []
-    if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Start Offset: {start_offset}ms")
-    if drift > MAX_DRIFT_MS: issues.append(f"Drift Detected: {drift}ms")
-    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Low DNA Score ({match_score}%)")
-    
-    plt.figure(figsize=(10, 4))
-    plt.subplot(2, 1, 1)
-    librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.7)
-    plt.title("Reference (10s)")
-    plt.subplot(2, 1, 2)
-    librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.7)
-    plt.title(f"Comparison (Offset: {start_offset}ms)")
-    plt.tight_layout()
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    
-    return {
-        "start_offset": start_offset, "end_offset": end_offset, "drift": drift,
-        "match_score": match_score, "summary": summary, "issues": issues,
-        "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
-        "ref_meta": ref_meta, "comp_meta": comp_meta
-    }
-
-# --- ROUTES ---
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/upload', methods=['POST'])
-def upload_files():
-    session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
-    analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
-    os.makedirs(analysis_root, exist_ok=True)
-    
-    # Capture UI Options
-    deep_analysis = request.form.get('deepAnalysis') == 'true'
-    
-    try:
-        ref_file = request.files['reference']
-        ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
-        ref_file.save(ref_path)
-        ref_meta = get_file_metadata(ref_path)
-        
-        # Determine if we isolate vocals for the Reference
-        ref_to_analyze = ref_path
-        if deep_analysis:
-            ref_to_analyze = isolate_vocals(ref_path, analysis_root)
-        
-        comp_files = request.files.getlist('comparison[]')
-        results = []
-        for f in comp_files:
-            if not f.filename or not allowed_file(f.filename): continue
-            f_path = os.path.join(analysis_root, secure_filename(f.filename))
-            f.save(f_path)
+        function displayResults(data) {
+            const container = document.getElementById('results');
+            container.style.display = 'block';
+            let html = `<h2 style="margin-bottom:2rem;">Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
             
-            # 1. Quality Classification (Always run as it's fast)
-            quality_report = classify_audio_quality(f_path)
-            
-            # 2. Vocal DNA mode
-            comp_to_analyze = f_path
-            if deep_analysis:
-                comp_to_analyze = isolate_vocals(f_path, analysis_root)
-            
-            # 3. Sync Analysis
-            analysis = analyze_sync(ref_to_analyze, comp_to_analyze, ref_meta)
-            
-            results.append({
-                'filename': f.filename,
-                'offset_ms': analysis['start_offset'],
-                'end_offset_ms': analysis['end_offset'],
-                'drift_ms': analysis['drift'],
-                'match_confidence': analysis['match_score'],
-                'summary': analysis['summary'],
-                'issues': analysis['issues'],
-                'visual': analysis['visual'],
-                'ref_meta': analysis['ref_meta'],
-                'comp_meta': analysis['comp_meta'],
-                'quality': quality_report,
-                'deep_mode_active': deep_analysis,
-                'needs_review': len(analysis['issues']) > 0
-            })
-            
-        return jsonify({'reference': ref_file.filename, 'results': results})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+            data.results.forEach(r => {
+                const srMismatch = r.ref_meta.sr !== r.comp_meta.sr ? 'mismatch' : '';
+                const chMismatch = r.ref_meta.channels !== r.comp_meta.channels ? 'mismatch' : '';
+                
+                // Logic for Final Verdict Table
+                const offsetStatus = Math.abs(r.offset_ms) > 50 ? 'pill-fail' : 'pill-pass';
+                const driftStatus = r.drift_ms > 30 ? 'pill-fail' : 'pill-pass';
+                const dnaStatus = r.match_confidence > 15 ? 'pill-pass' : 'pill-fail';
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+                const offsetMeaning = r.offset_ms > 0 
+                    ? `The Dub audio needs to be moved <strong>${Math.abs(r.offset_ms)}ms earlier</strong>.` 
+                    : `The Dub audio needs to be moved <strong>${Math.abs(r.offset_ms)}ms later</strong>.`;
+
+                html += `
+                    <div class="result-item">
+                        <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
+                        <h4 style="margin-bottom: 1rem;">${r.filename} ${r.deep_mode_active ? '<small style="color:#0ea5e9;">[Neural Mode]</small>' : ''}</h4>
+                        
+                        <div class="verdict-container">
+                            <div class="verdict-header">📊 Final Verdict for this Clip</div>
+                            <table class="verdict-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Value</th>
+                                        <th>Status</th>
+                                        <th>Meaning</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Start Offset</strong></td>
+                                        <td>${r.offset_ms}ms</td>
+                                        <td><span class="status-pill ${offsetStatus}">${Math.abs(r.offset_ms) > 50 ? '❌ High' : '✅ Pass'}</span></td>
+                                        <td>${Math.abs(r.offset_ms) > 50 ? offsetMeaning : 'Timing is within acceptable broadcast limits.'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sync Drift</strong></td>
+                                        <td>${r.drift_ms}ms</td>
+                                        <td><span class="status-pill ${driftStatus}">${r.drift_ms > 30 ? '❌ Issue' : '✅ Perfect'}</span></td>
+                                        <td>${r.drift_ms > 30 ? 'Playback speed mismatch detected; tracks will diverge.' : 'The playback speed is identical; no stretching needed.'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>DNA Match</strong></td>
+                                        <td>${r.match_confidence}%</td>
+                                        <td><span class="status-pill ${dnaStatus}">${r.match_confidence > 15 ? '✅ Valid' : '❌ Mismatch'}</span></td>
+                                        <td>${r.match_confidence > 15 ? 'Legitimate translated or synchronized content.' : 'Content mismatch detected; check for wrong episode.'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        ${r.issues.length > 0 ? `<div class="issue-box"><ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul></div>` : ''}
+                        
+                        <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
+                        <table class="prop-table">
+                            <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
+                            <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td class="${srMismatch}">${r.comp_meta.sr}</td></tr>
+                            <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td class="${chMismatch}">${r.comp_meta.channels}</td></tr>
+                            <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
+                            <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
+                        </table>
+
+                        <div class="stats-grid" style="opacity: 0.6;">
+                            <div class="stat-card">
+                                <div class="stat-label">Audio Quality</div>
+                                <div class="stat-value" style="font-size: 0.95rem;">${r.quality.quality_label}</div>
+                                <div class="stat-sub">${r.quality.peak_status} | ${r.quality.dynamic_range}</div>
+                            </div>
+                        </div>
+                        
+                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
+                    </div>`;
+            });
+            container.innerHTML = html;
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
