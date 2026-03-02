@@ -2,119 +2,836 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sync Engine Pro | QA Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync Engine Pro | Quality Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --brand: #0f172a; --accent: #2563eb; --bg: #f8fafc; --danger: #ef4444; --success: #10b981; }
-        * { box-sizing: border-box; margin: 0; font-family: 'Inter', system-ui, sans-serif; }
-        body { background: var(--bg); color: var(--brand); padding: 40px; }
-        .container { max-width: 1200px; margin: auto; }
-        
-        /* Dashboard Header */
-        .glass-card { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 30px; }
-        .upload-area { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0; }
-        .drop-zone { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 40px; text-align: center; transition: 0.2s; background: #fdfdfd; }
-        .drop-zone:hover { border-color: var(--accent); background: #f0f7ff; }
-        
-        /* Metric Dashboard */
-        .result-card { background: white; border-radius: 20px; padding: 30px; margin-top: 25px; border: 1px solid #e2e8f0; position: relative; }
-        .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 25px 0; }
-        .score-box { padding: 20px; border-radius: 16px; text-align: center; background: #f8fafc; border: 1px solid #f1f5f9; }
-        .score-val { font-size: 28px; font-weight: 800; display: block; }
-        .score-lbl { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --neutral-50: #f9fafb;
+            --neutral-100: #f3f4f6;
+            --neutral-200: #e5e7eb;
+            --neutral-300: #d1d5db;
+            --neutral-400: #9ca3af;
+            --neutral-500: #6b7280;
+            --neutral-600: #4b5563;
+            --neutral-700: #374151;
+            --neutral-800: #1f2937;
+            --neutral-900: #111827;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        /* Status colors */
-        .status-pill { float: right; padding: 6px 18px; border-radius: 50px; font-size: 12px; font-weight: 800; }
-        .bg-pass { background: #dcfce7; color: #15803d; }
-        .bg-fail { background: #fee2e2; color: #b91c1c; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-        .details-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 20px; display: none; }
-        .details-table th { text-align: left; color: #64748b; padding: 10px; border-bottom: 2px solid #f1f5f9; }
-        .details-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-        
-        .waveform-box { background: #0f172a; border-radius: 12px; padding: 10px; margin-top: 20px; }
-        .waveform-img { width: 100%; display: block; opacity: 0.9; }
-        
-        .btn { background: var(--brand); color: white; border: none; padding: 14px 34px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: var(--accent); transform: translateY(-1px); }
-        .text-btn { background: none; border: none; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; margin-top: 10px; }
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--neutral-900);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            margin-bottom: 50px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 16px;
+            color: var(--neutral-400);
+            font-weight: 500;
+        }
+
+        /* --- CARD STYLES --- */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            margin-bottom: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- UPLOAD SECTION --- */
+        .upload-section h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--neutral-900);
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .upload-box {
+            border: 2px dashed var(--neutral-300);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--neutral-50) 0%, white 100%);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-box:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #eff6ff 0%, white 100%);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .upload-box.active {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-box h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--neutral-700);
+        }
+
+        .upload-box p {
+            font-size: 13px;
+            color: var(--neutral-400);
+            margin-bottom: 16px;
+        }
+
+        .file-name {
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--success);
+            font-weight: 600;
+            margin-top: 12px;
+            word-break: break-all;
+            padding: 8px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .upload-box.active .file-name {
+            display: block;
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Sora', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-upload {
+            width: 100%;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-upload:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+
+        /* --- ACTION BAR --- */
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        /* --- LOADING STATE --- */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .loading-content h3 {
+            margin-top: 16px;
+            color: var(--neutral-900);
+            font-size: 16px;
+        }
+
+        /* --- RESULTS SECTION --- */
+        .results {
+            display: grid;
+            gap: 24px;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid var(--neutral-200);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-item:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+            border-color: var(--neutral-300);
+        }
+
+        /* --- RESULT HEADER --- */
+        .result-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--neutral-200);
+        }
+
+        .result-header h2 {
+            flex: 1;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--neutral-900);
+            word-break: break-word;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-review {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* --- SUMMARY BANNER --- */
+        .summary-banner {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: var(--neutral-800);
+            line-height: 1.6;
+        }
+
+        .summary-banner strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* --- METRICS GRID --- */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid var(--neutral-200);
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--neutral-500);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- METADATA TABLE --- */
+        .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .metadata-table th {
+            text-align: left;
+            padding: 12px;
+            background: var(--neutral-100);
+            color: var(--neutral-700);
+            font-weight: 600;
+            border-bottom: 2px solid var(--neutral-200);
+        }
+
+        .metadata-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--neutral-200);
+            color: var(--neutral-700);
+        }
+
+        .metadata-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .metadata-table tr:hover {
+            background: var(--neutral-50);
+        }
+
+        /* --- WAVEFORM --- */
+        .waveform-container {
+            margin-bottom: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0f172a;
+            padding: 4px;
+        }
+
+        .waveform-img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* --- EXPLAINER --- */
+        .explainer {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 4px solid var(--warning);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--neutral-800);
+            line-height: 1.7;
+        }
+
+        .explainer strong {
+            display: block;
+            margin-bottom: 12px;
+            color: #b45309;
+        }
+
+        .explainer ul {
+            list-style: none;
+            margin: 0;
+        }
+
+        .explainer li {
+            margin-bottom: 8px;
+        }
+
+        .explainer li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- ERROR MESSAGE --- */
+        .error-message {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-left: 4px solid var(--danger);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: #991b1b;
+            font-weight: 500;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        /* --- EMPTY STATE --- */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state p {
+            color: var(--neutral-400);
+            font-size: 15px;
+            margin-top: 12px;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 16px;
+            }
+
+            .header h1 {
+                font-size: 32px;
+                margin-bottom: 8px;
+            }
+
+            .card {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .metric-value {
+                font-size: 24px;
+            }
+
+            .result-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .status-badge {
+                align-self: flex-start;
+            }
+
+            .action-bar {
+                justify-content: stretch;
+            }
+
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+
+        /* --- ACCESSIBILITY --- */
+        .btn:focus-visible,
+        .upload-box:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="glass-card">
-            <h1 style="font-size: 2.5rem; letter-spacing: -1.5px;">Sync Engine <span style="color:var(--accent)">Pro</span></h1>
-            <p style="color:#64748b">Professional audio alignment and texture verification suite.</p>
-            
-            <div class="upload-area">
-                <div class="drop-zone">
-                    <h3 style="margin-bottom:15px">Master File</h3>
-                    <input type="file" id="mIn" hidden onchange="lbl('mIn','mN')">
-                    <button class="btn" style="background:#64748b" onclick="document.getElementById('mIn').click()">Browse Reference</button>
-                    <div id="mN" style="margin-top:10px; font-size:12px; font-weight:600"></div>
-                </div>
-                <div class="drop-zone">
-                    <h3 style="margin-bottom:15px">Dub Samples</h3>
-                    <input type="file" id="dIn" multiple hidden onchange="lbl('dIn','dN')">
-                    <button class="btn" style="background:#64748b" onclick="document.getElementById('dIn').click()">Browse Dubs</button>
-                    <div id="dN" style="margin-top:10px; font-size:12px; font-weight:600"></div>
-                </div>
-            </div>
-            <div style="text-align: right;"><button class="btn" onclick="process()">Analyze Session</button></div>
+        <!-- Header -->
+        <div class="header">
+            <h1>🎙️ Sync Engine Pro</h1>
+            <p>Precision audio dubbing quality control & analysis</p>
         </div>
 
-        <div id="output"></div>
+        <!-- Upload Card -->
+        <div class="card">
+            <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 24px;">Upload Audio Files</h2>
+            
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="upload-grid">
+                <!-- Master Upload -->
+                <div>
+                    <div class="upload-box" id="masterBox" onclick="document.getElementById('masterInput').click()">
+                        <h3>📌 Master</h3>
+                        <p>Reference audio file</p>
+                        <input type="file" id="masterInput" accept="audio/*" onchange="handleUpload('masterInput', 'masterBox')">
+                        <div class="file-name" id="masterName"></div>
+                    </div>
+                </div>
+
+                <!-- Dubs Upload -->
+                <div>
+                    <div class="upload-box" id="dubsBox" onclick="document.getElementById('dubsInput').click()">
+                        <h3>🎬 Dubs</h3>
+                        <p>Comparison audio files (multiple OK)</p>
+                        <input type="file" id="dubsInput" multiple accept="audio/*" onchange="handleUpload('dubsInput', 'dubsBox')">
+                        <div class="file-name" id="dubsName"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeAudio()" disabled>
+                    <span>▶</span> Start Analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer"></div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Analyzing Audio...</h3>
+            <p style="color: var(--neutral-400); margin-top: 8px; font-size: 13px;">Processing files and calculating metrics</p>
+        </div>
     </div>
 
     <script>
-        function lbl(i, t) { const f = document.getElementById(i).files; document.getElementById(t).innerText = f.length > 1 ? `${f.length} files selected` : f[0].name; }
+        // State management
+        let masterFile = null;
+        let dubFiles = [];
 
-        async function process() {
-            const fd = new FormData();
-            fd.append('reference', document.getElementById('mIn').files[0]);
-            for(let f of document.getElementById('dIn').files) fd.append('comparison[]', f);
+        // Handle file uploads
+        function handleUpload(inputId, boxId) {
+            const input = document.getElementById(inputId);
+            const box = document.getElementById(boxId);
+            const nameDiv = document.getElementById(inputId === 'masterInput' ? 'masterName' : 'dubsName');
 
-            const res = await fetch('/upload', { method: 'POST', body: fd });
-            const data = await res.json();
+            if (inputId === 'masterInput') {
+                masterFile = input.files[0];
+                if (masterFile) {
+                    box.classList.add('active');
+                    nameDiv.textContent = masterFile.name;
+                    nameDiv.title = masterFile.name;
+                } else {
+                    box.classList.remove('active');
+                    nameDiv.textContent = '';
+                }
+            } else {
+                dubFiles = Array.from(input.files);
+                if (dubFiles.length > 0) {
+                    box.classList.add('active');
+                    nameDiv.textContent = `${dubFiles.length} file${dubFiles.length !== 1 ? 's' : ''} selected`;
+                } else {
+                    box.classList.remove('active');
+                    nameDiv.textContent = '';
+                }
+            }
 
-            let html = `<h2 style="margin-bottom:10px">Session: ${data.session}</h2>`;
-            data.results.forEach((r, idx) => {
-                html += `
-                <div class="result-card">
-                    <span class="status-pill ${r.passed ? 'bg-pass' : 'bg-fail'}">${r.passed ? 'PASSED' : 'NEEDS REVIEW'}</span>
-                    <h3>${r.filename}</h3>
-                    
-                    <div class="score-grid">
-                        <div class="score-box">
-                            <span class="score-lbl">Start Offset</span>
-                            <span class="score-val" style="color:${Math.abs(r.offset_ms) > 50 ? 'var(--danger)' : 'inherit'}">${r.offset_ms}ms</span>
-                        </div>
-                        <div class="score-box">
-                            <span class="score-lbl">Lip-Flap Sync</span>
-                            <span class="score-val">${r.lip_flap}%</span>
-                        </div>
-                        <div class="score-box">
-                            <span class="score-lbl">Tone Lock</span>
-                            <span class="score-val">${r.tone_lock}%</span>
-                        </div>
-                    </div>
-
-                    <div class="waveform-box">
-                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
-                    </div>
-
-                    <button class="text-btn" onclick="document.getElementById('meta-${idx}').style.display = 'table'">Show Technical Specs</button>
-                    
-                    <table class="details-table" id="meta-${idx}">
-                        <tr><th>Property</th><th>Master Reference</th><th>Current Dub</th></tr>
-                        <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
-                        <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
-                        <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td>${r.comp_meta.channels}</td></tr>
-                        <tr><td>Loudness</td><td>${r.ref_meta.loudness}</td><td>${r.comp_meta.loudness}</td></tr>
-                    </table>
-                </div>`;
-            });
-            document.getElementById('output').innerHTML = html;
+            updateAnalyzeButton();
         }
+
+        // Update analyze button state
+        function updateAnalyzeButton() {
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = !masterFile || dubFiles.length === 0;
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 5000);
+        }
+
+        // Analyze audio
+        async function analyzeAudio() {
+            if (!masterFile || dubFiles.length === 0) {
+                showError('Please upload master and at least one dub file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('reference', masterFile);
+
+            dubFiles.forEach(f => {
+                formData.append('comparison[]', f);
+            });
+
+            // Show loading
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.add('active');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayResults(data);
+            } catch (error) {
+                showError(error.message || 'An error occurred during analysis.');
+                console.error('Analysis error:', error);
+            } finally {
+                overlay.classList.remove('active');
+            }
+        }
+
+        // Display results
+        function displayResults(data) {
+            const container = document.getElementById('resultsContainer');
+            const resultsHTML = data.results.map(result => `
+                <div class="card result-item">
+                    <div class="result-header">
+                        <h2>${escapeHtml(result.filename)}</h2>
+                        <span class="status-badge ${result.needs_review ? 'status-review' : 'status-pass'}">
+                            ${result.needs_review ? '⚠ Review' : '✓ Passed'}
+                        </span>
+                    </div>
+
+                    <div class="summary-banner">
+                        <strong>Analysis Summary</strong>
+                        ${result.summary}
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${result.offset_ms}</div>
+                            <div class="metric-label">Offset (ms)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${result.lip_flap_sync}</div>
+                            <div class="metric-label">Lip-Flap %</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${result.tone_lock}</div>
+                            <div class="metric-label">Tone Lock %</div>
+                        </div>
+                    </div>
+
+                    <table class="metadata-table">
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <th>Master Reference</th>
+                                <th>Current Dub</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Sample Rate</td>
+                                <td><code>${result.ref_meta.sr}</code></td>
+                                <td><code>${result.comp_meta.sr}</code></td>
+                            </tr>
+                            <tr>
+                                <td>Bit Depth</td>
+                                <td><code>${result.ref_meta.bit_depth}</code></td>
+                                <td><code>${result.comp_meta.bit_depth}</code></td>
+                            </tr>
+                            <tr>
+                                <td>Channels</td>
+                                <td><code>${result.ref_meta.channels}</code></td>
+                                <td><code>${result.comp_meta.channels}</code></td>
+                            </tr>
+                            <tr>
+                                <td>Loudness</td>
+                                <td><code>${result.ref_meta.loudness}</code></td>
+                                <td><code>${result.comp_meta.loudness}</code></td>
+                            </tr>
+                            <tr>
+                                <td>Duration</td>
+                                <td><code>${result.ref_meta.duration_str}</code></td>
+                                <td><code>${result.comp_meta.duration_str}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    ${result.visual ? `
+                        <div class="waveform-container">
+                            <img class="waveform-img" src="data:image/png;base64,${result.visual}" alt="Waveform comparison">
+                        </div>
+                    ` : ''}
+
+                    <div class="explainer">
+                        <strong>📊 Metric Definitions</strong>
+                        <ul>
+                            <li><strong>Temporal Offset:</strong> Time delay between master and dub (ms). Target: ±50ms or less for frame-accurate sync.</li>
+                            <li><strong>Lip-Flap Sync:</strong> Speech density similarity percentage. Measures syllable timing and rhythm match. High values (80%+) indicate tight synchronization.</li>
+                            <li><strong>Tone Lock:</strong> Spectral texture similarity. Analyzes frequency content and emotional tone. Ensures consistent acoustic environment and vocal characteristics.</li>
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = resultsHTML || '<div class="card empty-state"><p>No results to display.</p></div>';
+
+            // Scroll to results
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Utility: Escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAnalyzeButton();
+        });
+
+        // Prevent default drag behavior
+        document.addEventListener('dragover', e => e.preventDefault());
+        document.addEventListener('drop', e => e.preventDefault());
     </script>
 </body>
 </html>
