@@ -5,51 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Sync Checker Pro</title>
     <style>
-        /* [Existing Styles Kept...] */
         * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
         body { background: #f1f5f9; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; }
         .container { max-width: 1100px; width: 100%; }
         .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; }
         h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
         .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
+        
+        /* Upload Section */
         .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
         .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; transition: border-color 0.2s; }
-        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
+        .upload-box:hover { border-color: #3b82f6; }
+        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
+        .file-input-label:hover { border-color: #3b82f6; color: #3b82f6; }
         input[type="file"] { display: none; }
-        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; }
+        
+        /* Buttons */
+        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .secondary-btn { background: #64748b; color: white; border: none; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; }
+        
+        /* Results Styling */
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .status-badge { padding: 0.4rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-review { background: #fee2e2; color: #991b1b; }
+        
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
         .stat-card { background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; }
         .stat-label { color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem; }
         .stat-value { color: #1e293b; font-size: 1.2rem; font-weight: 700; }
+        
         .confidence-bg { background: #e2e8f0; height: 8px; border-radius: 10px; margin-top: 8px; overflow: hidden; }
-        .confidence-fill { height: 100%; background: #3b82f6; border-radius: 10px; }
-        .waveform-img { width: 100%; margin-top: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .confidence-fill { height: 100%; background: #3b82f6; border-radius: 10px; transition: width 0.5s ease-in-out; }
+        
+        .waveform-img { width: 100%; margin-top: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; }
+        
+        /* Technical Properties Table */
+        .properties-container { margin: 1.5rem 0; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .prop-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .prop-table th { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 10px 15px; border-bottom: 1px solid #e2e8f0; }
+        .prop-table td { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .prop-master { color: #2563eb; font-weight: 600; background: #f0f7ff; }
+        .prop-comparison { color: #d97706; font-weight: 600; }
+
         #loading { display: none; align-items: center; gap: 0.75rem; color: #2563eb; font-weight: 700; }
         .spinner { width: 20px; height: 20px; border: 3px solid #bfdbfe; border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         .issue-box { background: #fff1f2; border: 1px solid #fda4af; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
         .issue-title { color: #9f1239; font-size: 0.9rem; font-weight: 700; display: block; margin-bottom: 5px; }
-        .issue-list { color: #be123c; font-size: 0.85rem; padding-left: 1.2rem; }
-
-        /* NEW: Technical Properties Table */
-        .properties-container { margin: 1.5rem 0; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
-        .prop-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        .prop-table th { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 10px 15px; border-bottom: 1px solid #e2e8f0; }
-        .prop-table td { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-        .prop-master { color: #2563eb; font-weight: 600; }
-        .prop-comparison { color: #d97706; font-weight: 600; }
+        .issue-list { color: #be123c; font-size: 0.85rem; padding-left: 1.2rem; margin: 0; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <h1>🎧 Audio Sync Checker</h1>
-            <p class="subtitle">Cross-check dubbing alignment and content integrity using signal processing.</p>
+            <p class="subtitle">Validate dubbing alignment and content integrity using signal processing.</p>
             
             <div class="upload-section">
                 <div class="upload-box">
@@ -80,6 +95,7 @@
     </div>
 
     <script>
+        // UI Listeners for file selection
         document.getElementById('refFile').addEventListener('change', function() {
             document.getElementById('refFileList').innerText = this.files[0]?.name || '';
         });
@@ -88,51 +104,68 @@
         });
 
         async function clearCache() {
-            if (!confirm("Are you sure?")) return;
-            const res = await fetch('/clear_cache', { method: 'POST' });
-            location.reload(); 
+            if (!confirm("Clear all session data and fingerprints?")) return;
+            try {
+                const res = await fetch('/clear_cache', { method: 'POST' });
+                const data = await res.json();
+                alert(data.status);
+                location.reload(); 
+            } catch (e) { alert("Failed to clear cache."); }
         }
 
         async function uploadFiles() {
             const refInput = document.getElementById('refFile');
             const compInput = document.getElementById('compFiles');
-            if (!refInput.files.length || !compInput.files.length) return alert('Input Required');
+            
+            if (!refInput.files.length || !compInput.files.length) {
+                return alert('Please select both a reference file and at least one comparison file.');
+            }
 
             const formData = new FormData();
             formData.append('reference', refInput.files[0]);
-            for (let f of compInput.files) formData.append('comparison[]', f);
+            for (let f of compInput.files) {
+                formData.append('comparison[]', f);
+            }
 
+            // UI State: Loading
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('checkBtn').disabled = true;
+            document.getElementById('results').style.display = 'none';
 
-            const res = await fetch('/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('checkBtn').disabled = false;
-            displayResults(data);
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error("Server error during analysis.");
+                const data = await res.json();
+                displayResults(data);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('checkBtn').disabled = false;
+            }
         }
 
         function displayResults(data) {
-            const div = document.getElementById('results');
-            div.style.display = 'block';
-            let html = `<h2 style="margin-bottom:1.5rem;">Analysis for: ${data.reference}</h2>`;
+            const container = document.getElementById('results');
+            container.style.display = 'block';
+            let html = `<h2 style="margin-bottom:1.5rem; color: #1e293b;">Results for: <span style="color: #2563eb;">${data.reference}</span></h2>`;
             
             data.results.forEach(r => {
                 const isFail = r.needs_review;
-                const cls = isFail ? 'status-review' : 'status-ok';
-                const label = isFail ? 'Attention Required' : 'Sync Match OK';
+                const badgeClass = isFail ? 'status-review' : 'status-ok';
+                const badgeLabel = isFail ? 'Attention Required' : 'Sync Match OK';
+                const offsetColor = Math.abs(r.offset_ms) > 50 ? '#ef4444' : '#10b981';
                 
                 let issuesHtml = r.issues && r.issues.length > 0 ? `
                     <div class="issue-box">
-                        <strong class="issue-title">Detected Issues:</strong>
+                        <strong class="issue-title">⚠️ Signal Warnings:</strong>
                         <ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul>
                     </div>` : '';
                 
                 html += `
                     <div class="result-item">
-                        <span class="status-badge ${cls}">${label}</span>
-                        <h4 style="margin-bottom: 1rem;">${r.filename}</h4>
+                        <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+                        <h4 style="margin-bottom: 1.5rem; color: #334155; border-left: 4px solid #cbd5e1; padding-left: 10px;">${r.filename}</h4>
                         
                         ${issuesHtml}
 
@@ -140,7 +173,7 @@
                             <table class="prop-table">
                                 <thead>
                                     <tr>
-                                        <th>Property</th>
+                                        <th>Technical Spec</th>
                                         <th>Reference (Master)</th>
                                         <th>Comparison (Dub)</th>
                                     </tr>
@@ -157,9 +190,14 @@
                                         <td class="prop-comparison">${r.comp_meta.duration}</td>
                                     </tr>
                                     <tr>
-                                        <td>Bit Depth/Subtype</td>
+                                        <td>Format / Bit Depth</td>
                                         <td class="prop-master">${r.ref_meta.bit_depth}</td>
                                         <td class="prop-comparison">${r.comp_meta.bit_depth}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Channels</td>
+                                        <td class="prop-master">${r.ref_meta.channels}</td>
+                                        <td class="prop-comparison">${r.comp_meta.channels}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -168,22 +206,26 @@
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-label">Temporal Offset</div>
-                                <div class="stat-value" style="color: ${Math.abs(r.offset_ms) > 50 ? '#ef4444' : '#10b981'}">
-                                    ${r.offset_ms} <span>ms</span>
+                                <div class="stat-value" style="color: ${offsetColor}">
+                                    ${r.offset_ms} <span style="font-size: 0.8rem; opacity: 0.7;">ms</span>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-label">Content Match</div>
+                                <div class="stat-label">Acoustic Similarity</div>
                                 <div class="stat-value">${r.match_confidence}%</div>
                                 <div class="confidence-bg"><div class="confidence-fill" style="width: ${r.match_confidence}%"></div></div>
                             </div>
                         </div>
 
-                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
+                        <div style="margin-top: 1rem;">
+                            <p style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">Visual Alignment (15s Window)</p>
+                            <img class="waveform-img" src="data:image/png;base64,${r.visual}" alt="Waveform Comparison">
+                        </div>
                     </div>`;
             });
-            div.innerHTML = html;
-            div.scrollIntoView({ behavior: 'smooth' });
+            
+            container.innerHTML = html;
+            container.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
