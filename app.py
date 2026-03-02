@@ -79,7 +79,7 @@ def get_file_metadata(path):
             "sr": f"{sr} Hz",
             "duration": duration,
             "duration_str": f"{round(duration, 2)}s",
-            "bit_depth": "Compressed",
+            "bit_depth": "Compressed/Variable",
             "channels": "Unknown"
         }
 
@@ -124,7 +124,6 @@ def get_offset_at_time(y_ref, y_comp, sr, hop_length):
     return round(float(lag_frame * hop_length / sr * 1000), 2)
 
 def generate_summary(match_score, drift, start_offset):
-    """Generates the text verdict using defined thresholds."""
     if match_score >= EXACT_MATCH_THRESHOLD:
         content_txt = "Exact match detected."
     elif match_score >= DUB_MATCH_THRESHOLD:
@@ -141,10 +140,6 @@ def generate_summary(match_score, drift, start_offset):
     return f"{content_txt} {sync_txt}"
 
 def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
-    """
-    Analyzes temporal sync between two files. 
-    ref_meta is passed in to avoid redundant disk I/O.
-    """
     fp_a = get_efficient_fingerprint(anchor_path)
     fp_b = get_efficient_fingerprint(rendition_path)
     match_score = compare_fingerprints(fp_a, fp_b)
@@ -171,17 +166,14 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     if drift > MAX_DRIFT_MS: issues.append(f"Drift Detected: {drift}ms variance")
     if match_score < DUB_MATCH_THRESHOLD: issues.append(f"DNA Match Low ({match_score}%)")
     
-    # Visualization: Restored Subplots for better QA visibility
+    # Visualization: Restored Subplots
     plt.figure(figsize=(10, 6))
-    
     plt.subplot(2, 1, 1)
     librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.7)
     plt.title("Reference (First 10s)")
-    
     plt.subplot(2, 1, 2)
     librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.7)
     plt.title(f"Comparison (Offset: {start_offset}ms)")
-    
     plt.tight_layout()
     buf = BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
@@ -207,7 +199,6 @@ def clear_cache():
         time.sleep(0.5)
         with _cache_lock:
             FINGERPRINT_CACHE.clear()
-
         if os.path.exists(MEDIA_VOLATILE_PATH):
             for item in os.listdir(MEDIA_VOLATILE_PATH):
                 item_path = os.path.join(MEDIA_VOLATILE_PATH, item)
@@ -216,10 +207,7 @@ def clear_cache():
                         shutil.rmtree(item_path, ignore_errors=True)
                     else:
                         os.remove(item_path)
-                except Exception as e:
-                    print(f"Skipping {item}: {e}")
-                    continue
-
+                except Exception: continue
         return jsonify({'status': 'Volatile storage and cache cleared'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -236,19 +224,14 @@ def upload_files():
 
         ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
-        
-        # Optimization: Scan reference once
         ref_meta = get_file_metadata(ref_path)
         
         comp_files = request.files.getlist('comparison[]')
         results = []
         for f in comp_files:
-            if not f.filename or not allowed_file(f.filename):
-                continue
-            
+            if not f.filename or not allowed_file(f.filename): continue
             f_path = os.path.join(analysis_root, secure_filename(f.filename))
             f.save(f_path)
-            
             analysis = analyze_sync(ref_path, f_path, ref_meta)
             results.append({
                 'filename': f.filename,
@@ -263,7 +246,6 @@ def upload_files():
                 'comp_meta': analysis['comp_meta'],
                 'needs_review': len(analysis['issues']) > 0
             })
-        
         cleanup_session(analysis_root)
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
