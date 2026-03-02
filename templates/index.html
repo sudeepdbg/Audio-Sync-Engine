@@ -1,261 +1,164 @@
-import os
-import uuid
-import shutil
-import hashlib
-import numpy as np
-import librosa
-import librosa.display
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import base64
-from io import BytesIO
-import traceback
-import subprocess
-import soundfile as sf
-import time
-import threading
-import gc
-from scipy import signal
-from werkzeug.utils import secure_filename
-from flask import Flask, request, jsonify, render_template
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Sync Engine Pro</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
+        body { background: #f1f5f9; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; color: #1e293b; }
+        .container { max-width: 1100px; width: 100%; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; }
+        h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
+        .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
+        
+        .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
+        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; text-align: center; }
+        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
+        input[type="file"] { display: none; }
+        
+        .verdict-container { margin: 1.5rem 0; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .verdict-header { background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; }
+        .verdict-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .verdict-table th { background: #f1f5f9; text-align: left; padding: 12px; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .verdict-table td { padding: 12px; border-top: 1px solid #f1f5f9; vertical-align: middle; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
+        .pill-pass { background: #dcfce7; color: #166534; }
+        .pill-fail { background: #fee2e2; color: #991b1b; }
 
-# --- OPTIONAL ADVANCED LIBRARIES ---
-try:
-    import demucs.separate
-    HAS_DEMUCS = True
-except ImportError:
-    HAS_DEMUCS = False
-    print("⚠️ Warning: Demucs not found. Vocal DNA mode will be disabled.")
+        .summary-bar { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1rem; margin: 1rem 0; border-radius: 4px; font-size: 0.9rem; color: #0369a1; }
 
-try:
-    import pyloudnorm as fct
-    HAS_LOUDNORM = True
-except ImportError:
-    HAS_LOUDNORM = False
-    print("⚠️ Warning: pyloudnorm not found. Quality scanning will be limited.")
+        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .primary-btn:hover { background: #1d4ed8; }
+        .primary-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
 
-app = Flask(__name__)
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; position: relative; }
+        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-review { background: #fee2e2; color: #991b1b; }
+        
+        .prop-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; display: none; }
+        .prop-table th { background: #f8fafc; color: #64748b; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .prop-table td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .mismatch { color: #e11d48; font-weight: 700; background: #fff1f2; }
+        .details-toggle { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.8rem; font-weight: 600; text-decoration: underline; margin-bottom: 1rem; }
 
-# --- SYSTEM CONFIGURATION ---
-app.config['MAX_CONTENT_LENGTH'] = 800 * 1024 * 1024 
-SUPPORTED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac', 'aac', 'mp4'}
+        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
+        .issue-list { margin: 0; color: #be123c; font-size: 0.9rem; }
 
-# --- QUALITY THRESHOLDS ---
-EXACT_MATCH_THRESHOLD = 95
-DUB_MATCH_THRESHOLD = 15
-MAX_DRIFT_MS = 30
-MAX_START_OFFSET_MS = 50
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MEDIA_VOLATILE_PATH = os.path.join(BASE_DIR, "data")
-if not os.path.exists(MEDIA_VOLATILE_PATH):
-    os.makedirs(MEDIA_VOLATILE_PATH)
-
-FINGERPRINT_CACHE = {}
-_cache_lock = threading.Lock()
-
-# --- UTILITIES ---
-
-def classify_audio_quality(file_path):
-    try:
-        data, rate = sf.read(file_path)
-        if len(data.shape) > 1:
-            data = np.mean(data, axis=1)
+        #loading { display: none; align-items: center; gap: 10px; color: #2563eb; font-weight: 700; }
+        .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🎧 Sync Engine</h1>
+            <p class="subtitle">Broadcast temporal alignment and Content DNA verification.</p>
             
-        max_val = np.max(np.abs(data))
-        clipping = "Possible Clipping" if max_val > 0.99 else "Clean Peaks"
-        
-        loudness_val = "N/A"
-        if HAS_LOUDNORM:
-            meter = fct.Meter(rate) 
-            loudness_val = f"{round(meter.integrated_loudness(data), 2)} LUFS"
-        
-        is_silent = "Silent" if max_val < 0.001 else "Verified"
+            <div class="upload-section">
+                <div class="upload-box">
+                    <h3>📌 Master</h3>
+                    <label for="refFile" class="file-input-label">Select Master</label>
+                    <input type="file" id="refFile">
+                    <div id="refFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                </div>
+                <div class="upload-box">
+                    <h3>🔁 Dubs</h3>
+                    <label for="compFiles" class="file-input-label">Select Dubs</label>
+                    <input type="file" id="compFiles" multiple>
+                    <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                </div>
+            </div>
 
-        return {
-            "dynamic_range": loudness_val,
-            "peak_status": clipping,
-            "quality_label": is_silent
+            <div style="display: flex; justify-content: flex-end; margin-top: 2rem; gap: 1rem; align-items: center;">
+                <input type="checkbox" id="deepAnalysis"> <label for="deepAnalysis" style="font-size: 0.9rem;">Vocal DNA Mode</label>
+                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
+                <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
+                <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
+            </div>
+        </div>
+        <div id="results" class="card" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('refFile').addEventListener('change', function() { 
+            document.getElementById('refFileList').innerText = this.files[0]?.name || ''; 
+        });
+        document.getElementById('compFiles').addEventListener('change', function() { 
+            document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; 
+        });
+
+        async function uploadFiles() {
+            const refInput = document.getElementById('refFile');
+            const compInput = document.getElementById('compFiles');
+            if (!refInput.files.length || !compInput.files.length) return alert('Select files first.');
+
+            const formData = new FormData();
+            formData.append('reference', refInput.files[0]);
+            formData.append('deepAnalysis', document.getElementById('deepAnalysis').checked);
+            for (let f of compInput.files) formData.append('comparison[]', f);
+
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                displayResults(data);
+            } catch (e) { alert("Error: " + e.message); }
+            finally { document.getElementById('loading').style.display = 'none'; }
         }
-    except Exception:
-        return {"quality_label": "Scan Error", "dynamic_range": "N/A", "peak_status": "N/A"}
 
-def isolate_vocals(file_path, output_root):
-    if not HAS_DEMUCS:
-        return file_path
-    try:
-        demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
-        base_name = os.path.basename(file_path).rsplit('.', 1)[0]
-        vocal_path = os.path.join(output_root, "htdemucs", base_name, "vocals.mp3")
-        return vocal_path if os.path.exists(vocal_path) else file_path
-    except Exception:
-        return file_path
+        function displayResults(data) {
+            const container = document.getElementById('results');
+            container.style.display = 'block';
+            let html = `<h2>Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
+            
+            data.results.forEach(r => {
+                const offsetStatus = Math.abs(r.offset_ms) > 50 ? 'pill-fail' : 'pill-pass';
+                const driftStatus = r.drift_ms > 30 ? 'pill-fail' : 'pill-pass';
+                const dnaStatus = r.match_confidence > 15 ? 'pill-pass' : 'pill-fail';
 
-def get_file_hash(path):
-    h = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(8192), b''):
-            h.update(chunk)
-    return h.hexdigest()
+                html += `
+                    <div class="result-item">
+                        <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
+                        <h4 style="margin-bottom: 0.5rem;">${r.filename}</h4>
+                        
+                        <div class="summary-bar">${r.status_summary}</div>
 
-def get_file_metadata(path):
-    try:
-        info = sf.info(path)
-        return {
-            "sr": f"{info.samplerate} Hz",
-            "duration": info.duration,
-            "duration_str": f"{round(info.duration, 2)}s",
-            "bit_depth": info.subtype,
-            "channels": info.channels
+                        <div class="verdict-container">
+                            <table class="verdict-table">
+                                <thead><tr><th>Metric</th><th>Value</th><th>Status</th><th>Meaning</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Start Offset</strong></td><td>${r.offset_ms}ms</td><td><span class="status-pill ${offsetStatus}">${Math.abs(r.offset_ms) > 50 ? '❌ High' : '✅ Pass'}</span></td><td>Timing is ${Math.abs(r.offset_ms) > 50 ? 'outside' : 'inside'} limits.</td></tr>
+                                    <tr><td><strong>Sync Drift</strong></td><td>${r.drift_ms}ms</td><td><span class="status-pill ${driftStatus}">${r.drift_ms > 30 ? '❌ Issue' : '✅ Perfect'}</span></td><td>${r.drift_ms > 30 ? 'Speed mismatch.' : 'Perfect sync.'}</td></tr>
+                                    <tr><td><strong>DNA Match</strong></td><td>${r.match_confidence}%</td><td><span class="status-pill ${dnaStatus}">${r.match_confidence > 15 ? '✅ Valid' : '❌ Mismatch'}</span></td><td>${r.match_confidence > 15 ? 'Verified content.' : 'Check episode.'}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
+                        <table class="prop-table">
+                            <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
+                            <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
+                            <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
+                        </table>
+
+                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
+                    </div>`;
+            });
+            container.innerHTML = html;
+            container.scrollIntoView({ behavior: 'smooth' });
         }
-    except Exception:
-        duration = librosa.get_duration(path=path)
-        y, sr = librosa.load(path, sr=None, duration=1)
-        return {"sr": f"{sr} Hz", "duration": duration, "duration_str": f"{round(duration, 2)}s", "bit_depth": "N/A", "channels": "N/A"}
 
-def get_efficient_fingerprint(file_path):
-    file_hash = get_file_hash(file_path)
-    with _cache_lock:
-        if file_hash in FINGERPRINT_CACHE: return FINGERPRINT_CACHE[file_hash]
-    
-    fpcalc_path = shutil.which("fpcalc") or "/usr/local/bin/fpcalc"
-    try:
-        cmd = [fpcalc_path, "-plain", file_path]
-        fp = subprocess.check_output(cmd, timeout=30).decode().strip()
-        with _cache_lock: FINGERPRINT_CACHE[file_hash] = fp
-        return fp
-    except Exception: return None
-
-def compare_fingerprints(fp_a, fp_b):
-    try:
-        if not fp_a or not fp_b: return 0.0
-        if fp_a == fp_b: return 100.0
-        from difflib import SequenceMatcher
-        return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
-    except Exception: return 0.0
-
-def get_offset_at_time(y_ref, y_comp, sr, hop_length):
-    ref_env = librosa.feature.rms(y=y_ref, hop_length=hop_length)[0]
-    comp_env = librosa.feature.rms(y=y_comp, hop_length=hop_length)[0]
-    ref_env = (ref_env - ref_env.min()) / (ref_env.max() - ref_env.min() + 1e-10)
-    comp_env = (comp_env - comp_env.min()) / (comp_env.max() - comp_env.min() + 1e-10)
-    correlation = signal.correlate(comp_env, ref_env, mode='full')
-    lag_frame = np.argmax(correlation) - (len(ref_env) - 1)
-    return round(float(lag_frame * hop_length / sr * 1000), 2)
-
-def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512):
-    fp_a = get_efficient_fingerprint(anchor_path)
-    fp_b = get_efficient_fingerprint(rendition_path)
-    match_score = compare_fingerprints(fp_a, fp_b)
-    comp_meta = get_file_metadata(rendition_path)
-    
-    y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=30)
-    y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=30)
-    start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
-    
-    try:
-        y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=max(0, ref_meta['duration']-30))
-        y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=max(0, comp_meta['duration']-30))
-        end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
-        drift_ms = round(abs(end_offset - start_offset), 2)
-    except:
-        drift_ms = 0.0
-
-    plt.figure(figsize=(10, 3))
-    librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.5, label="Master")
-    librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, color='orange', alpha=0.5, label="Dub")
-    plt.title(f"Alignment View (Offset: {start_offset}ms)")
-    plt.tight_layout()
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    
-    issues = []
-    if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Offset Issue: {start_offset}ms")
-    if drift_ms > MAX_DRIFT_MS: issues.append(f"Drift Issue: {drift_ms}ms over duration")
-    if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Content DNA Mismatch ({match_score}%)")
-    
-    return {
-        "start_offset": start_offset, 
-        "drift_ms": drift_ms,
-        "match_score": match_score, 
-        "issues": issues,
-        "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
-        "ref_meta": ref_meta, 
-        "comp_meta": comp_meta
-    }
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/clear_cache', methods=['POST'])
-def clear_cache():
-    try:
-        gc.collect()
-        time.sleep(0.5)
-        with _cache_lock: FINGERPRINT_CACHE.clear()
-        if os.path.exists(MEDIA_VOLATILE_PATH):
-            shutil.rmtree(MEDIA_VOLATILE_PATH, ignore_errors=True)
-            os.makedirs(MEDIA_VOLATILE_PATH)
-        return jsonify({'status': 'Cleared'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/upload', methods=['POST'])
-def upload_files():
-    session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
-    analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
-    os.makedirs(analysis_root, exist_ok=True)
-    
-    deep_analysis = request.form.get('deepAnalysis') == 'true'
-    
-    try:
-        ref_file = request.files['reference']
-        ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
-        ref_file.save(ref_path)
-        ref_meta = get_file_metadata(ref_path)
-        
-        ref_to_analyze = isolate_vocals(ref_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else ref_path
-        
-        comp_files = request.files.getlist('comparison[]')
-        results = []
-        for f in comp_files:
-            if not f.filename: continue
-            f_path = os.path.join(analysis_root, secure_filename(f.filename))
-            f.save(f_path)
-            
-            quality_report = classify_audio_quality(f_path)
-            comp_to_analyze = isolate_vocals(f_path, analysis_root) if (deep_analysis and HAS_DEMUCS) else f_path
-            
-            analysis = analyze_sync(ref_to_analyze, comp_to_analyze, ref_meta)
-            
-            # --- SUMMARY LOGIC ---
-            summary = "Detection complete. Review metrics below for drift and DNA match."
-            if not analysis['issues']:
-                summary = "Detection complete. Audio is perfectly aligned."
-
-            # --- SANITIZE DATA (Fixes Python 3.14 JSON error) ---
-            results.append({
-                'filename': f.filename,
-                'offset_ms': float(analysis['start_offset']),
-                'drift_ms': float(analysis['drift_ms']),
-                'match_confidence': float(analysis['match_score']),
-                'issues': analysis['issues'],
-                'visual': analysis['visual'],
-                'ref_meta': analysis['ref_meta'],
-                'comp_meta': analysis['comp_meta'],
-                'quality': quality_report,
-                'status_summary': summary,
-                'deep_mode_active': bool(deep_analysis and HAS_DEMUCS),
-                'needs_review': bool(len(analysis['issues']) > 0)
-            })
-            
-        return jsonify({'reference': ref_file.filename, 'results': results})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+        async function clearCache() {
+            await fetch('/clear_cache', { method: 'POST' });
+            location.reload();
+        }
+    </script>
+</body>
+</html>
