@@ -2,162 +2,103 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Sync Engine Pro</title>
     <style>
-        * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
-        body { background: #f1f5f9; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; color: #1e293b; }
-        .container { max-width: 1100px; width: 100%; }
-        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; }
-        h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
-        .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
-        
-        .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
-        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; text-align: center; }
-        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
+        * { box-sizing: border-box; margin: 0; font-family: 'Inter', sans-serif; }
+        body { background: #f1f5f9; padding: 2rem; color: #1e293b; }
+        .container { max-width: 1100px; margin: auto; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2rem; margin-bottom: 2rem; }
+        .upload-section { display: flex; gap: 2rem; margin-bottom: 2rem; }
+        .upload-box { flex: 1; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; padding: 1.5rem; text-align: center; }
+        .file-input-label { display: inline-block; background: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; margin-top: 10px; }
         input[type="file"] { display: none; }
-        
-        .verdict-container { margin: 1.5rem 0; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
-        .verdict-header { background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; }
-        .verdict-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        .verdict-table th { background: #f1f5f9; text-align: left; padding: 12px; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .verdict-table td { padding: 12px; border-top: 1px solid #f1f5f9; vertical-align: middle; }
-        .status-pill { padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
-        .pill-pass { background: #dcfce7; color: #166534; }
-        .pill-fail { background: #fee2e2; color: #991b1b; }
-
-        .summary-bar { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1rem; margin: 1rem 0; border-radius: 4px; font-size: 0.9rem; color: #0369a1; }
-
-        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-        .primary-btn:hover { background: #1d4ed8; }
-        .primary-btn:disabled { background: #94a3b8; cursor: not-allowed; }
-        .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
-
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; position: relative; }
-        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; }
+        .status-badge { float: right; padding: 0.4rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-review { background: #fee2e2; color: #991b1b; }
-        
-        .prop-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; display: none; }
-        .prop-table th { background: #f8fafc; color: #64748b; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
-        .prop-table td { padding: 8px 12px; border: 1px solid #e2e8f0; }
-        .mismatch { color: #e11d48; font-weight: 700; background: #fff1f2; }
-        .details-toggle { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.8rem; font-weight: 600; text-decoration: underline; margin-bottom: 1rem; }
-
-        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
-        .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
-        .issue-list { margin: 0; color: #be123c; font-size: 0.9rem; }
-
-        #loading { display: none; align-items: center; gap: 10px; color: #2563eb; font-weight: 700; }
-        .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .summary-bar { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1rem; margin: 1rem 0; color: #0369a1; border-radius: 4px; }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+        .metric-card { background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .metric-label { font-size: 0.7rem; text-transform: uppercase; color: #64748b; font-weight: bold; }
+        .metric-value { font-size: 1.2rem; font-weight: 800; margin-top: 4px; }
+        .prop-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        .prop-table th, .prop-table td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+        .prop-table th { background: #f8fafc; color: #64748b; }
+        .waveform-img { width: 100%; border-radius: 12px; margin-top: 1rem; }
+        .primary-btn { background: #2563eb; color: white; border: none; padding: 0.8rem 2rem; border-radius: 40px; cursor: pointer; font-weight: bold; }
+        #loading { display: none; margin-right: 15px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <h1>🎧 Sync Engine</h1>
-            <p class="subtitle">Broadcast temporal alignment and Content DNA verification.</p>
-            
             <div class="upload-section">
                 <div class="upload-box">
                     <h3>📌 Master</h3>
                     <label for="refFile" class="file-input-label">Select Master</label>
                     <input type="file" id="refFile">
-                    <div id="refFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                    <div id="refName" style="font-size: 0.8rem; margin-top: 8px;"></div>
                 </div>
                 <div class="upload-box">
                     <h3>🔁 Dubs</h3>
                     <label for="compFiles" class="file-input-label">Select Dubs</label>
                     <input type="file" id="compFiles" multiple>
-                    <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
+                    <div id="compCount" style="font-size: 0.8rem; margin-top: 8px;"></div>
                 </div>
             </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 2rem; gap: 1rem; align-items: center;">
-                <input type="checkbox" id="deepAnalysis"> <label for="deepAnalysis" style="font-size: 0.9rem;">Vocal DNA Mode</label>
-                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
-                <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
-                <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
+            <div style="text-align: right;">
+                <span id="loading">Processing...</span>
+                <button class="primary-btn" onclick="uploadFiles()">Start Analysis</button>
             </div>
         </div>
-        <div id="results" class="card" style="display: none;"></div>
+        <div id="results"></div>
     </div>
 
     <script>
-        document.getElementById('refFile').addEventListener('change', function() { 
-            document.getElementById('refFileList').innerText = this.files[0]?.name || ''; 
-        });
-        document.getElementById('compFiles').addEventListener('change', function() { 
-            document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; 
-        });
+        document.getElementById('refFile').onchange = e => document.getElementById('refName').innerText = e.target.files[0].name;
+        document.getElementById('compFiles').onchange = e => document.getElementById('compCount').innerText = `${e.target.files.length} files`;
 
         async function uploadFiles() {
-            const refInput = document.getElementById('refFile');
-            const compInput = document.getElementById('compFiles');
-            if (!refInput.files.length || !compInput.files.length) return alert('Select files first.');
-
             const formData = new FormData();
-            formData.append('reference', refInput.files[0]);
-            formData.append('deepAnalysis', document.getElementById('deepAnalysis').checked);
-            for (let f of compInput.files) formData.append('comparison[]', f);
-
-            document.getElementById('loading').style.display = 'flex';
-            document.getElementById('results').style.display = 'none';
-
-            try {
-                const res = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await res.json();
-                displayResults(data);
-            } catch (e) { alert("Error: " + e.message); }
-            finally { document.getElementById('loading').style.display = 'none'; }
-        }
-
-        function displayResults(data) {
-            const container = document.getElementById('results');
-            container.style.display = 'block';
-            let html = `<h2>Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
+            formData.append('reference', document.getElementById('refFile').files[0]);
+            for(let f of document.getElementById('compFiles').files) formData.append('comparison[]', f);
             
+            document.getElementById('loading').style.display = 'inline';
+            const res = await fetch('/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            document.getElementById('loading').style.display = 'none';
+            
+            let html = `<h2>Master: ${data.reference}</h2>`;
             data.results.forEach(r => {
-                const offsetStatus = Math.abs(r.offset_ms) > 50 ? 'pill-fail' : 'pill-pass';
-                const driftStatus = r.drift_ms > 30 ? 'pill-fail' : 'pill-pass';
-                const dnaStatus = r.match_confidence > 15 ? 'pill-pass' : 'pill-fail';
-
                 html += `
-                    <div class="result-item">
-                        <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
-                        <h4 style="margin-bottom: 0.5rem;">${r.filename}</h4>
-                        
-                        <div class="summary-bar">${r.status_summary}</div>
-
-                        <div class="verdict-container">
-                            <table class="verdict-table">
-                                <thead><tr><th>Metric</th><th>Value</th><th>Status</th><th>Meaning</th></tr></thead>
-                                <tbody>
-                                    <tr><td><strong>Start Offset</strong></td><td>${r.offset_ms}ms</td><td><span class="status-pill ${offsetStatus}">${Math.abs(r.offset_ms) > 50 ? '❌ High' : '✅ Pass'}</span></td><td>Timing is ${Math.abs(r.offset_ms) > 50 ? 'outside' : 'inside'} limits.</td></tr>
-                                    <tr><td><strong>Sync Drift</strong></td><td>${r.drift_ms}ms</td><td><span class="status-pill ${driftStatus}">${r.drift_ms > 30 ? '❌ Issue' : '✅ Perfect'}</span></td><td>${r.drift_ms > 30 ? 'Speed mismatch.' : 'Perfect sync.'}</td></tr>
-                                    <tr><td><strong>DNA Match</strong></td><td>${r.match_confidence}%</td><td><span class="status-pill ${dnaStatus}">${r.match_confidence > 15 ? '✅ Valid' : '❌ Mismatch'}</span></td><td>${r.match_confidence > 15 ? 'Verified content.' : 'Check episode.'}</td></tr>
-                                </tbody>
-                            </table>
+                <div class="result-item">
+                    <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ REVIEW' : '✅ PASSED'}</span>
+                    <h3>${r.filename}</h3>
+                    <div class="summary-bar">${r.status_summary}</div>
+                    
+                    <div class="metric-grid">
+                        <div class="metric-card"><div class="metric-label">Start Offset</div><div class="metric-value">${r.offset_ms}ms</div></div>
+                        <div class="metric-card"><div class="metric-label">Sync Drift</div><div class="metric-value" style="color:${r.drift_ms > 30 ? 'red':'green'}">${r.drift_ms}ms</div></div>
+                        <div class="metric-card"><div class="metric-label">DNA Match</div><div class="metric-value">${r.match_confidence}%</div></div>
+                        <div class="metric-card">
+                            <div class="metric-label">Audio Quality</div>
+                            <div class="metric-value">${r.quality.label}</div>
+                            <div style="font-size:0.7rem; color:#64748b;">${r.quality.lufs} | ${r.quality.peak}</div>
                         </div>
-                        
-                        <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
-                        <table class="prop-table">
-                            <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
-                            <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
-                            <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
-                        </table>
+                    </div>
 
-                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
-                    </div>`;
+                    <table class="prop-table">
+                        <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
+                        <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
+                        <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td>${r.comp_meta.channels}</td></tr>
+                        <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
+                        <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
+                    </table>
+                    <img class="waveform-img" src="data:image/png;base64,${r.visual}">
+                </div>`;
             });
-            container.innerHTML = html;
-            container.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        async function clearCache() {
-            await fetch('/clear_cache', { method: 'POST' });
-            location.reload();
+            document.getElementById('results').innerHTML = html;
         }
     </script>
 </body>
