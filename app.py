@@ -153,22 +153,13 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     match_score = compare_fingerprints(fp_a, fp_b)
     
     comp_meta = get_file_metadata(rendition_path)
+    duration = min(ref_meta['duration'], comp_meta['duration'])
     
-    # Load 30s segments for offset analysis
     y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=30)
     y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=30)
     
     start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
     
-    # Calculate drift (comparing end-of-file segments)
-    try:
-        y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=max(0, ref_meta['duration']-30))
-        y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=max(0, comp_meta['duration']-30))
-        end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
-        drift_ms = round(abs(end_offset - start_offset), 2)
-    except:
-        drift_ms = 0.0
-
     # Visualization
     plt.figure(figsize=(10, 3))
     librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, color='blue', alpha=0.5, label="Master")
@@ -181,17 +172,12 @@ def analyze_sync(anchor_path, rendition_path, ref_meta, sr=22050, hop_length=512
     
     issues = []
     if abs(start_offset) > MAX_START_OFFSET_MS: issues.append(f"Offset Issue: {start_offset}ms")
-    if drift_ms > MAX_DRIFT_MS: issues.append(f"Drift Issue: {drift_ms}ms over duration")
     if match_score < DUB_MATCH_THRESHOLD: issues.append(f"Content DNA Mismatch ({match_score}%)")
     
     return {
-        "start_offset": start_offset, 
-        "drift_ms": drift_ms,
-        "match_score": match_score, 
-        "issues": issues,
+        "start_offset": start_offset, "match_score": match_score, "issues": issues,
         "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
-        "ref_meta": ref_meta, 
-        "comp_meta": comp_meta
+        "ref_meta": ref_meta, "comp_meta": comp_meta
     }
 
 # --- ROUTES ---
@@ -244,7 +230,6 @@ def upload_files():
             results.append({
                 'filename': f.filename,
                 'offset_ms': analysis['start_offset'],
-                'drift_ms': analysis['drift_ms'],
                 'match_confidence': analysis['match_score'],
                 'issues': analysis['issues'],
                 'visual': analysis['visual'],
