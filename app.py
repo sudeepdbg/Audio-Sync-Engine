@@ -76,15 +76,35 @@ def get_file_metadata(path):
 # --- CORE LOGIC: FINGERPRINTING & SYNC ---
 
 def compare_fingerprints(fp_a, fp_b):
-    """Bit-accurate comparison of Chromaprint integer arrays."""
+    """Robust comparison of Chromaprint fingerprints."""
     try:
-        list_a = [int(x) for x in fp_a.split(',')]
-        list_b = [int(x) for x in fp_b.split(',')]
-        min_len = min(len(list_a), len(list_b))
-        if min_len == 0: return 0.0
-        matches = sum(1 for a, b in zip(list_a[:min_len], list_b[:min_len]) if a == b)
-        return round((matches / min_len) * 100, 2)
-    except: return 0.0
+        # 1. Clean the strings
+        fp_a = fp_a.strip()
+        fp_b = fp_b.strip()
+
+        # 2. Check for exact string match first (covers identical files)
+        if fp_a == fp_b:
+            return 100.0
+
+        # 3. Handle comma-separated integers
+        if ',' in fp_a and ',' in fp_b:
+            list_a = [int(x) for x in fp_a.split(',')]
+            list_b = [int(x) for x in fp_b.split(',')]
+            
+            min_len = min(len(list_a), len(list_b))
+            if min_len == 0: return 0.0
+            
+            matches = sum(1 for a, b in zip(list_a[:min_len], list_b[:min_len]) if a == b)
+            return round((matches / min_len) * 100, 2)
+        
+        # 4. Fallback: If it's a giant single integer string, use SequenceMatcher
+        # as a last resort or check substring similarity
+        from difflib import SequenceMatcher
+        return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
+
+    except Exception as e:
+        print(f"Comparison Error: {e}")
+        return 0.0
 
 def get_efficient_fingerprint(file_path):
     file_hash = get_file_hash(file_path)
