@@ -152,7 +152,7 @@
                         <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
                         <h4 style="margin-bottom: 1rem;">${r.filename} ${r.deep_mode_active ? '<small style="color:#0ea5e9;">[Neural Mode]</small>' : ''}</h4>
                         
-                        <div class="summary-box"><p class="summary-text">${r.summary}</p></div>
+                        <div class="summary-box"><p class="summary-text">Detection complete. Review metrics below for drift and DNA match.</p></div>
                         
                         ${r.issues.length > 0 ? `<div class="issue-box"><ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul></div>` : ''}
                         
