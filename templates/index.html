@@ -17,23 +17,15 @@
         .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
         input[type="file"] { display: none; }
         
-        /* Deep Analysis Switch */
-        .deep-mode-container { margin: 1.5rem 0; padding: 1.25rem; background: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd; display: flex; align-items: flex-start; gap: 12px; }
-        #deepAnalysis { width: 20px; height: 20px; cursor: pointer; margin-top: 3px; }
-        .deep-text h4 { color: #0369a1; font-size: 0.95rem; margin-bottom: 4px; }
-        .deep-text p { font-size: 0.8rem; color: #0c4a6e; line-height: 1.4; }
-
-        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-        .primary-btn:hover { background: #1d4ed8; }
-        .primary-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; }
         .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
 
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; position: relative; }
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; }
         .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-review { background: #fee2e2; color: #991b1b; }
         
-        .summary-box { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; clear: both; }
+        .summary-box { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; }
         .summary-text { font-size: 1rem; color: #0c4a6e; font-weight: 500; }
 
         .prop-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; display: none; }
@@ -45,8 +37,7 @@
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .stat-card { background: #f8fafc; padding: 1.25rem; border-radius: 12px; border: 1px solid #f1f5f9; }
         .stat-label { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
-        .stat-value { color: #1e293b; font-size: 1.1rem; font-weight: 800; }
-        .stat-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; font-weight: 500; }
+        .stat-value { color: #1e293b; font-size: 1.25rem; font-weight: 800; }
         
         .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
         .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
@@ -62,7 +53,6 @@
         <div class="card">
             <h1>🎧 Sync Engine</h1>
             <p class="subtitle">Broadcast temporal alignment and Content DNA verification.</p>
-            
             <div class="upload-section">
                 <div class="upload-box">
                     <h3>📌 Master</h3>
@@ -77,17 +67,8 @@
                     <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
                 </div>
             </div>
-
-            <div class="deep-mode-container">
-                <input type="checkbox" id="deepAnalysis">
-                <div class="deep-text">
-                    <h4>🚀 Neural Vocal Isolation (Vocal DNA Mode)</h4>
-                    <p>Use this for comparing a dialogue-only Dub against a full Master. It isolates speech from background music to ensure accurate sync scores.</p>
-                </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; gap: 1rem; align-items: center;">
-                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 2.5rem; gap: 1rem; align-items: center;">
+                <div id="loading"><div class="spinner"></div> Processing...</div>
                 <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
                 <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
             </div>
@@ -96,15 +77,11 @@
     </div>
 
     <script>
-        document.getElementById('refFile').addEventListener('change', function() { 
-            document.getElementById('refFileList').innerText = this.files[0]?.name || ''; 
-        });
-        document.getElementById('compFiles').addEventListener('change', function() { 
-            document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; 
-        });
+        document.getElementById('refFile').addEventListener('change', function() { document.getElementById('refFileList').innerText = this.files[0]?.name || ''; });
+        document.getElementById('compFiles').addEventListener('change', function() { document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; });
 
         async function clearCache() {
-            if (!confirm("Delete all session fingerprints and neural cache?")) return;
+            if (!confirm("Delete all session fingerprints?")) return;
             const res = await fetch('/clear_cache', { method: 'POST' });
             location.reload(); 
         }
@@ -112,13 +89,10 @@
         async function uploadFiles() {
             const refInput = document.getElementById('refFile');
             const compInput = document.getElementById('compFiles');
-            const deepMode = document.getElementById('deepAnalysis').checked;
-
-            if (!refInput.files.length || !compInput.files.length) return alert('Please select both Master and Dub files.');
+            if (!refInput.files.length || !compInput.files.length) return alert('Inputs required');
 
             const formData = new FormData();
             formData.append('reference', refInput.files[0]);
-            formData.append('deepAnalysis', deepMode);
             for (let f of compInput.files) formData.append('comparison[]', f);
 
             document.getElementById('loading').style.display = 'flex';
@@ -128,11 +102,9 @@
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                if(data.error) throw new Error(data.error);
                 displayResults(data);
-            } catch (e) { 
-                alert("Analysis failed: " + e.message); 
-            } finally {
+            } catch (e) { alert("Analysis failed."); }
+            finally {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('checkBtn').disabled = false;
             }
@@ -150,10 +122,8 @@
                 html += `
                     <div class="result-item">
                         <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
-                        <h4 style="margin-bottom: 1rem;">${r.filename} ${r.deep_mode_active ? '<small style="color:#0ea5e9;">[Neural Mode]</small>' : ''}</h4>
-                        
+                        <h4 style="margin-bottom: 1.5rem;">${r.filename}</h4>
                         <div class="summary-box"><p class="summary-text">${r.summary}</p></div>
-                        
                         ${r.issues.length > 0 ? `<div class="issue-box"><ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul></div>` : ''}
                         
                         <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
@@ -166,25 +136,10 @@
                         </table>
 
                         <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-label">Start Offset</div>
-                                <div class="stat-value">${r.offset_ms}ms</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Sync Drift</div>
-                                <div class="stat-value" style="color: ${r.drift_ms > 30 ? '#ef4444' : '#10b981'}">${r.drift_ms}ms</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">DNA Match</div>
-                                <div class="stat-value">${r.match_confidence}%</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Audio Quality</div>
-                                <div class="stat-value" style="font-size: 0.95rem;">${r.quality.quality_label}</div>
-                                <div class="stat-sub">${r.quality.peak_status} | ${r.quality.dynamic_range}</div>
-                            </div>
+                            <div class="stat-card"><div class="stat-label">Start Offset</div><div class="stat-value">${r.offset_ms}ms</div></div>
+                            <div class="stat-card"><div class="stat-label">Drift</div><div class="stat-value" style="color: ${r.drift_ms > 30 ? '#ef4444' : '#10b981'}">${r.drift_ms}ms</div></div>
+                            <div class="stat-card"><div class="stat-label">DNA Match</div><div class="stat-value">${r.match_confidence}%</div></div>
                         </div>
-                        
                         <img class="waveform-img" src="data:image/png;base64,${r.visual}">
                     </div>`;
             });
