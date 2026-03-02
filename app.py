@@ -76,20 +76,23 @@ def get_file_metadata(path):
 # --- CORE LOGIC: FINGERPRINTING & SYNC ---
 
 def compare_fingerprints(fp_a, fp_b):
-    """Robust comparison of Chromaprint fingerprints."""
+    """
+    Enhanced comparison logic to prevent 0% results on identical/similar files.
+    """
     try:
-        # 1. Clean the strings
+        if not fp_a or not fp_b: return 0.0
+        
+        # Clean whitespace/newlines
         fp_a = fp_a.strip()
         fp_b = fp_b.strip()
 
-        # 2. Check for exact string match first (covers identical files)
-        if fp_a == fp_b:
-            return 100.0
+        # 1. Immediate exit for identical strings
+        if fp_a == fp_b: return 100.0
 
-        # 3. Handle comma-separated integers
-        if ',' in fp_a and ',' in fp_b:
-            list_a = [int(x) for x in fp_a.split(',')]
-            list_b = [int(x) for x in fp_b.split(',')]
+        # 2. Try to parse as integer lists (comma-separated)
+        if ',' in fp_a:
+            list_a = [int(x) for x in fp_a.split(',') if x.strip()]
+            list_b = [int(x) for x in fp_b.split(',') if x.strip()]
             
             min_len = min(len(list_a), len(list_b))
             if min_len == 0: return 0.0
@@ -97,13 +100,12 @@ def compare_fingerprints(fp_a, fp_b):
             matches = sum(1 for a, b in zip(list_a[:min_len], list_b[:min_len]) if a == b)
             return round((matches / min_len) * 100, 2)
         
-        # 4. Fallback: If it's a giant single integer string, use SequenceMatcher
-        # as a last resort or check substring similarity
+        # 3. Fallback for single-block fingerprints (String Similarity)
         from difflib import SequenceMatcher
         return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
 
     except Exception as e:
-        print(f"Comparison Error: {e}")
+        print(f"DEBUG: Comparison failed: {e}")
         return 0.0
 
 def get_efficient_fingerprint(file_path):
