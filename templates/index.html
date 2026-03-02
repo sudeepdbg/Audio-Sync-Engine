@@ -3,57 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Sync Checker Pro</title>
+    <title>Audio Sync Engine Pro</title>
     <style>
-        /* Base Styles */
         * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
         body { background: #f1f5f9; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; color: #1e293b; }
         .container { max-width: 1100px; width: 100%; }
-        
-        /* Layout Components */
         .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; }
         h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
         .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
         
-        /* Upload UI */
         .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
-        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; transition: all 0.2s; text-align: center; }
-        .upload-box.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; text-align: center; }
         .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
-        .file-input-label:hover { border-color: #3b82f6; color: #3b82f6; }
         input[type="file"] { display: none; }
         
-        /* Buttons */
         .primary-btn { background: #2563eb; color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; }
-        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
-        .secondary-btn:hover { background: #f8fafc; color: #0f172a; }
 
-        /* Report Items */
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px; float: right; }
+        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; }
+        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-review { background: #fee2e2; color: #991b1b; }
         
         .summary-box { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; }
-        .summary-title { font-size: 0.75rem; color: #0369a1; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .summary-text { font-size: 1rem; color: #0c4a6e; font-weight: 500; }
 
-        /* Metrics Grid */
+        .prop-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; display: none; }
+        .prop-table th { background: #f8fafc; color: #64748b; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .prop-table td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+        .mismatch { color: #e11d48; font-weight: 700; background: #fff1f2; }
+        .details-toggle { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.8rem; font-weight: 600; text-decoration: underline; margin-bottom: 1rem; }
+
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .stat-card { background: #f8fafc; padding: 1.25rem; border-radius: 12px; border: 1px solid #f1f5f9; }
         .stat-label { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
         .stat-value { color: #1e293b; font-size: 1.25rem; font-weight: 800; }
         
-        .waveform-container { position: relative; margin-top: 1.5rem; }
-        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; }
-        .waveform-tag { position: absolute; top: 10px; left: 10px; background: rgba(15, 23, 42, 0.8); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
-
+        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
         .issue-box { background: #fff1f2; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #fda4af; }
-        .issue-title { color: #9f1239; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; display: block; }
-        .issue-list { margin: 0; padding-left: 1.2rem; color: #be123c; font-size: 0.9rem; }
+        .issue-list { margin: 0; color: #be123c; font-size: 0.9rem; }
 
         #loading { display: none; align-items: center; gap: 10px; color: #2563eb; font-weight: 700; }
         .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -64,67 +52,44 @@
     <div class="container">
         <div class="card">
             <h1>🎧 Sync Engine</h1>
-            <p class="subtitle">Broadcast-grade temporal alignment and Content DNA verification.</p>
-            
+            <p class="subtitle">Broadcast temporal alignment and Content DNA verification.</p>
             <div class="upload-section">
-                <div class="upload-box" id="drop-zone-ref">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">📌 Reference Master</h3>
-                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Original high-res master file</p>
+                <div class="upload-box">
+                    <h3>📌 Master</h3>
                     <label for="refFile" class="file-input-label">Select Master</label>
                     <input type="file" id="refFile" accept=".wav,.mp3,.m4a,.flac,.aac,.mp4">
-                    <div id="refFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb; font-weight: 600;"></div>
+                    <div id="refFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
                 </div>
-                
-                <div class="upload-box" id="drop-zone-comp">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">🔁 Comparison Tracks</h3>
-                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Drop multiple dubs/localizations</p>
+                <div class="upload-box">
+                    <h3>🔁 Dubs</h3>
                     <label for="compFiles" class="file-input-label">Select Dubs</label>
                     <input type="file" id="compFiles" multiple accept=".wav,.mp3,.m4a,.flac,.aac,.mp4">
-                    <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb; font-weight: 600;"></div>
+                    <div id="compFileList" style="margin-top: 12px; font-size: 0.85rem; color: #2563eb;"></div>
                 </div>
             </div>
-
             <div style="display: flex; justify-content: flex-end; margin-top: 2.5rem; gap: 1rem; align-items: center;">
-                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
+                <div id="loading"><div class="spinner"></div> Processing...</div>
                 <button class="secondary-btn" onclick="clearCache()">🗑 Wipe Cache</button>
                 <button class="primary-btn" id="checkBtn" onclick="uploadFiles()">▶ Start Analysis</button>
             </div>
         </div>
-
         <div id="results" class="card" style="display: none;"></div>
     </div>
 
     <script>
-        // Simple drag & drop visual feedback
-        ['refFile', 'compFiles'].forEach(id => {
-            const input = document.getElementById(id);
-            const box = input.parentElement;
-            box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('dragover'); });
-            box.addEventListener('dragleave', () => box.classList.remove('dragover'));
-            box.addEventListener('drop', () => box.classList.remove('dragover'));
-        });
-
-        document.getElementById('refFile').addEventListener('change', function() {
-            document.getElementById('refFileList').innerText = this.files[0]?.name || '';
-        });
-        document.getElementById('compFiles').addEventListener('change', function() {
-            document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`;
-        });
+        document.getElementById('refFile').addEventListener('change', function() { document.getElementById('refFileList').innerText = this.files[0]?.name || ''; });
+        document.getElementById('compFiles').addEventListener('change', function() { document.getElementById('compFileList').innerText = `${this.files.length} track(s) loaded`; });
 
         async function clearCache() {
-            if (!confirm("This will delete all analyzed fingerprints and server data. Continue?")) return;
-            try {
-                const res = await fetch('/clear_cache', { method: 'POST' });
-                const data = await res.json();
-                alert(data.status || data.error);
-                location.reload(); 
-            } catch (e) { alert("Cleanup failed."); }
+            if (!confirm("Delete all session fingerprints?")) return;
+            const res = await fetch('/clear_cache', { method: 'POST' });
+            location.reload(); 
         }
 
         async function uploadFiles() {
             const refInput = document.getElementById('refFile');
             const compInput = document.getElementById('compFiles');
-            if (!refInput.files.length || !compInput.files.length) return alert('Please provide both Master and Dub tracks.');
+            if (!refInput.files.length || !compInput.files.length) return alert('Inputs required');
 
             const formData = new FormData();
             formData.append('reference', refInput.files[0]);
@@ -137,11 +102,9 @@
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.error) throw new Error(data.error);
                 displayResults(data);
-            } catch (e) {
-                alert("Error: " + e.message);
-            } finally {
+            } catch (e) { alert("Analysis failed."); }
+            finally {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('checkBtn').disabled = false;
             }
@@ -150,51 +113,36 @@
         function displayResults(data) {
             const container = document.getElementById('results');
             container.style.display = 'block';
-            let html = `<h2 style="margin-bottom:2rem; font-size: 1.5rem;">Project Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
+            let html = `<h2 style="margin-bottom:2rem;">Master: <span style="color: #2563eb;">${data.reference}</span></h2>`;
             
             data.results.forEach(r => {
-                const isFail = r.needs_review;
-                const statusLabel = isFail ? '⚠️ Needs Review' : '✅ Sync Passed';
+                const srMismatch = r.ref_meta.sr !== r.comp_meta.sr ? 'mismatch' : '';
+                const chMismatch = r.ref_meta.channels !== r.comp_meta.channels ? 'mismatch' : '';
                 
                 html += `
                     <div class="result-item">
-                        <span class="status-badge ${isFail ? 'status-review' : 'status-ok'}">${statusLabel}</span>
-                        <h4 style="margin-bottom: 1.5rem; font-size: 1.1rem;">${r.filename}</h4>
+                        <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">${r.needs_review ? '⚠️ Review' : '✅ Passed'}</span>
+                        <h4 style="margin-bottom: 1.5rem;">${r.filename}</h4>
+                        <div class="summary-box"><p class="summary-text">${r.summary}</p></div>
+                        ${r.issues.length > 0 ? `<div class="issue-box"><ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul></div>` : ''}
                         
-                        <div class="summary-box">
-                            <span class="summary-title">Quality Verdict</span>
-                            <p class="summary-text">${r.summary}</p>
-                        </div>
-
-                        ${r.issues.length > 0 ? `
-                            <div class="issue-box">
-                                <span class="issue-title">Discrepancy Log</span>
-                                <ul class="issue-list">${r.issues.map(i => `<li>${i}</li>`).join('')}</ul>
-                            </div>
-                        ` : ''}
+                        <button class="details-toggle" onclick="const t=this.nextElementSibling; t.style.display=t.style.display==='none'?'table':'none'">[±] View Format Details</button>
+                        <table class="prop-table">
+                            <tr><th>Property</th><th>Master</th><th>Dub</th></tr>
+                            <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td class="${srMismatch}">${r.comp_meta.sr}</td></tr>
+                            <tr><td>Channels</td><td>${r.ref_meta.channels}</td><td class="${chMismatch}">${r.comp_meta.channels}</td></tr>
+                            <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
+                            <tr><td>Duration</td><td>${r.ref_meta.duration_str}</td><td>${r.comp_meta.duration_str}</td></tr>
+                        </table>
 
                         <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-label">Start Offset</div>
-                                <div class="stat-value">${r.offset_ms}ms</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Total Drift</div>
-                                <div class="stat-value" style="color: ${r.drift_ms > 30 ? '#ef4444' : '#10b981'}">${r.drift_ms}ms</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Content DNA</div>
-                                <div class="stat-value">${r.match_confidence}%</div>
-                            </div>
+                            <div class="stat-card"><div class="stat-label">Start Offset</div><div class="stat-value">${r.offset_ms}ms</div></div>
+                            <div class="stat-card"><div class="stat-label">Drift</div><div class="stat-value" style="color: ${r.drift_ms > 30 ? '#ef4444' : '#10b981'}">${r.drift_ms}ms</div></div>
+                            <div class="stat-card"><div class="stat-label">DNA Match</div><div class="stat-value">${r.match_confidence}%</div></div>
                         </div>
-
-                        <div class="waveform-container">
-                            <span class="waveform-tag">Time Domain Sync Analysis (Reference vs Dub)</span>
-                            <img class="waveform-img" src="data:image/png;base64,${r.visual}">
-                        </div>
+                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
                     </div>`;
             });
-            
             container.innerHTML = html;
             container.scrollIntoView({ behavior: 'smooth' });
         }
