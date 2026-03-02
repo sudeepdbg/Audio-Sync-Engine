@@ -15,6 +15,7 @@ import subprocess
 import soundfile as sf
 import time
 import threading
+import gc  # Added for garbage collection to release file locks
 from scipy import signal
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
@@ -47,6 +48,7 @@ def cleanup_session(path, delay=600):
     """Deletes session files after a delay."""
     def _delete():
         time.sleep(delay)
+        gc.collect() # Release any locks before scheduled cleanup
         if os.path.exists(path):
             shutil.rmtree(path, ignore_errors=True)
     threading.Thread(target=_delete, daemon=True).start()
@@ -75,13 +77,10 @@ def get_file_metadata(path):
 # --- CORE LOGIC ---
 
 def compare_fingerprints(fp_a, fp_b):
-    """Robust logic for identical files and dubbed content."""
     try:
         if not fp_a or not fp_b: return 0.0
         fp_a, fp_b = fp_a.strip(), fp_b.strip()
-
         if fp_a == fp_b: return 100.0
-
         if ',' in fp_a:
             list_a = [int(x) for x in fp_a.split(',') if x.strip()]
             list_b = [int(x) for x in fp_b.split(',') if x.strip()]
@@ -89,7 +88,6 @@ def compare_fingerprints(fp_a, fp_b):
             if min_len == 0: return 0.0
             matches = sum(1 for a, b in zip(list_a[:min_len], list_b[:min_len]) if a == b)
             return round((matches / min_len) * 100, 2)
-        
         from difflib import SequenceMatcher
         return round(SequenceMatcher(None, fp_a, fp_b).ratio() * 100, 2)
     except: return 0.0
@@ -98,7 +96,6 @@ def get_efficient_fingerprint(file_path):
     file_hash = get_file_hash(file_path)
     with _cache_lock:
         if file_hash in FINGERPRINT_CACHE: return FINGERPRINT_CACHE[file_hash]
-    
     fpcalc_path = shutil.which("fpcalc") or "/opt/homebrew/bin/fpcalc"
     try:
         cmd = [fpcalc_path, "-plain", file_path]
@@ -117,60 +114,41 @@ def get_offset_at_time(y_ref, y_comp, sr, hop_length):
     return round(float(lag_frame * hop_length / sr * 1000), 2)
 
 def generate_summary(match_score, drift, start_offset):
-    """Generates a plain-English summary of the analysis findings."""
-    # Content Verdict
     if match_score >= 95:
         content_txt = "Exact match detected."
     elif match_score >= 15:
         content_txt = "Acoustically related (consistent with a localized dub)."
     else:
         content_txt = "Content DNA mismatch (unrelated audio)."
-
-    # Sync Verdict
     if drift > 30:
         sync_txt = f"Significant drift detected ({drift}ms variation)."
     elif abs(start_offset) > 50:
         sync_txt = f"Constant delay of {start_offset}ms detected."
     else:
         sync_txt = "Sync is frame-accurate."
-
     return f"{content_txt} {sync_txt}"
 
 def analyze_sync(anchor_path, rendition_path, sr=22050, hop_length=512):
-    # 1. DNA Match
     fp_a = get_efficient_fingerprint(anchor_path)
     fp_b = get_efficient_fingerprint(rendition_path)
     match_score = compare_fingerprints(fp_a, fp_b)
-
-    # 2. Metadata
     ref_meta = get_file_metadata(anchor_path)
     comp_meta = get_file_metadata(rendition_path)
     duration = min(ref_meta['duration'], comp_meta['duration'])
-
-    # 3. Start Sync
     y_ref_start, _ = librosa.load(anchor_path, sr=sr, duration=60)
     y_comp_start, _ = librosa.load(rendition_path, sr=sr, duration=60)
     start_offset = get_offset_at_time(y_ref_start, y_comp_start, sr, hop_length)
-
-    # 4. End Sync (Drift)
     end_offset = start_offset
     if duration > 120:
         y_ref_end, _ = librosa.load(anchor_path, sr=sr, offset=duration-60, duration=60)
         y_comp_end, _ = librosa.load(rendition_path, sr=sr, offset=duration-60, duration=60)
         end_offset = get_offset_at_time(y_ref_end, y_comp_end, sr, hop_length)
-
     drift = round(abs(start_offset - end_offset), 2)
-    
-    # Generate human-readable summary
     summary = generate_summary(match_score, drift, start_offset)
-
-    # Issues for UI
     issues = []
     if abs(start_offset) > 50: issues.append(f"Start Offset: {start_offset}ms")
     if drift > 30: issues.append(f"Drift Detected: {drift}ms variance")
     if match_score < 15: issues.append(f"DNA Match Low ({match_score}%)")
-
-    # Visual
     plt.figure(figsize=(10, 4))
     librosa.display.waveshow(y_ref_start[:sr*10], sr=sr, alpha=0.5, label='Ref')
     librosa.display.waveshow(y_comp_start[:sr*10], sr=sr, alpha=0.5, label='Comp')
@@ -178,17 +156,11 @@ def analyze_sync(anchor_path, rendition_path, sr=22050, hop_length=512):
     buf = BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
     plt.close()
-
     return {
-        "start_offset": start_offset,
-        "end_offset": end_offset,
-        "drift": drift,
-        "match_score": match_score,
-        "summary": summary,
-        "issues": issues,
+        "start_offset": start_offset, "end_offset": end_offset, "drift": drift,
+        "match_score": match_score, "summary": summary, "issues": issues,
         "visual": base64.b64encode(buf.getvalue()).decode('utf-8'),
-        "ref_meta": ref_meta,
-        "comp_meta": comp_meta
+        "ref_meta": ref_meta, "comp_meta": comp_meta
     }
 
 # --- ROUTES ---
@@ -197,24 +169,47 @@ def analyze_sync(anchor_path, rendition_path, sr=22050, hop_length=512):
 def index():
     return render_template('index.html')
 
+@app.route('/clear_cache', methods=['POST'])
+def clear_cache():
+    """Improved cleanup with garbage collection to release file handles."""
+    try:
+        gc.collect() # Force release of file handles
+        time.sleep(0.5)
+        
+        with _cache_lock:
+            FINGERPRINT_CACHE.clear()
+
+        if os.path.exists(MEDIA_VOLATILE_PATH):
+            for item in os.listdir(MEDIA_VOLATILE_PATH):
+                item_path = os.path.join(MEDIA_VOLATILE_PATH, item)
+                try:
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path, ignore_errors=True)
+                    else:
+                        os.remove(item_path)
+                except Exception as e:
+                    print(f"Skipping {item}: {e}")
+                    continue
+
+        return jsonify({'status': 'Volatile storage and cache cleared'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/upload', methods=['POST'])
 def upload_files():
     session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
     analysis_root = os.path.join(MEDIA_VOLATILE_PATH, session_id)
     os.makedirs(analysis_root, exist_ok=True)
-    
     try:
         ref_file = request.files['reference']
         comp_files = request.files.getlist('comparison[]')
         ref_path = os.path.join(analysis_root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
-
         results = []
         for f in comp_files:
             if not f.filename: continue
             f_path = os.path.join(analysis_root, secure_filename(f.filename))
             f.save(f_path)
-            
             analysis = analyze_sync(ref_path, f_path)
             results.append({
                 'filename': f.filename,
@@ -229,7 +224,6 @@ def upload_files():
                 'comp_meta': analysis['comp_meta'],
                 'needs_review': len(analysis['issues']) > 0
             })
-
         cleanup_session(analysis_root)
         return jsonify({'reference': ref_file.filename, 'results': results})
     except Exception as e:
