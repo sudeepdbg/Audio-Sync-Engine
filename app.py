@@ -57,18 +57,9 @@ def get_file_metadata(path):
             "duration": f"{round(info.duration, 2)}s",
             "bit_depth": info.subtype,
             "channels": info.channels,
-            "channel_label": "5.1 Surround" if info.channels == 6 else "Stereo" if info.channels == 2 else f"{info.channels} Ch"
+            "channel_label": "Stereo" if info.channels == 2 else "1 Ch" if info.channels == 1 else f"{info.channels} Ch"
         }
-    except: return {"sr": "N/A", "duration": "0s", "bit_depth": "N/A", "channels": 0, "channel_label": "N/A"}
-
-def calculate_phase(path):
-    try:
-        data, _ = sf.read(path)
-        if len(data.shape) < 2 or data.shape[1] < 2: return "1.0 (Mono)"
-        corr = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
-        status = "Healthy" if corr > 0.4 else "Wide" if corr > 0 else "🚩 Phase Issue"
-        return f"{round(float(corr), 2)} ({status})"
-    except: return "N/A"
+    except: return {"sr": "N/A", "duration": "0s", "bit_depth": "N/A", "channels": 0}
 
 def scan_levels(path):
     try:
@@ -78,6 +69,15 @@ def scan_levels(path):
         lufs = f"{round(meter.integrated_loudness(data), 2)} LUFS"
         return {"lufs": lufs, "peak": f"{round(peak_db, 2)} dBFS"}
     except: return {"lufs": "ERR", "peak": "ERR"}
+
+def calculate_phase(path):
+    try:
+        data, _ = sf.read(path)
+        if len(data.shape) < 2 or data.shape[1] < 2: return "1.0 (Mono)"
+        corr = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
+        status = "Healthy" if corr > 0.4 else "🚩 Phase Issue"
+        return f"{round(float(corr), 2)} ({status})"
+    except: return "N/A"
 
 def analyze_segment(y_ref, y_comp, sr):
     feat_a = librosa.feature.spectral_centroid(y=y_ref, sr=sr)[0]
@@ -111,7 +111,7 @@ def upload():
     ref_meta = get_file_metadata(ref_path)
     total_dur = librosa.get_duration(path=ref_path)
     
-    # Process Master segments (Start and End)
+    # Analyze Start and End of Master
     y_ref_s, _ = librosa.load(ref_path, sr=PERFORMANCE_SR, duration=60)
     y_ref_e, _ = librosa.load(ref_path, sr=PERFORMANCE_SR, offset=max(0, total_dur-60))
     
@@ -135,20 +135,16 @@ def upload():
         s_off, dna = analyze_segment(y_ref_s, y_c_s, PERFORMANCE_SR)
         e_off, _ = analyze_segment(y_ref_e, y_c_e, PERFORMANCE_SR)
         drift = round(e_off - s_off, 2)
-        
-        levels = scan_levels(f_path)
-        phase = calculate_phase(f_path)
         comp_meta = get_file_metadata(f_path)
 
         results.append({
             "filename": f.filename,
             "status": "PASS" if (dna > 70 and abs(drift) < 100) else "FAIL",
             "offset_ms": s_off,
-            "end_offset_ms": e_off,
             "total_drift_ms": drift,
             "dna_match": dna,
-            "phase": phase,
-            "levels": levels,
+            "phase": calculate_phase(f_path),
+            "levels": scan_levels(f_path),
             "ref_meta": ref_meta,
             "comp_meta": comp_meta,
             "wave_a": y_ref_s[::50].tolist(),
