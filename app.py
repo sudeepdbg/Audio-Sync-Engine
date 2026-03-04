@@ -111,6 +111,34 @@ def normalize_visual(y):
     return y / m if m > 0 else y
 
 
+def rms_envelope(y, hop=512):
+    """
+    Compute a smoothed RMS energy envelope for waveform display.
+
+    WHY RMS ENVELOPE INSTEAD OF RAW WAVEFORM
+    ──────────────────────────────────────────
+    Raw waveform shows individual sample values — for two dubs of the same
+    content in different languages, the sample-level shape will always look
+    different because syllables, vowels, and consonants land at different
+    exact moments.
+
+    RMS envelope averages energy over ~23ms windows (512 samples at 22050Hz),
+    giving a smoothed loudness-over-time curve.  Two dubs of the same content
+    will have very similar RMS envelopes because:
+      - Dialogue starts and stops at the same timestamps
+      - Music hits and silences are shared
+      - Overall energy pacing follows the same script structure
+
+    This makes the mirrored chart visually meaningful — engineers can see
+    whether the dub's energy envelope tracks the master, rather than looking
+    at raw waveform differences that are always present between languages.
+    """
+    rms = librosa.feature.rms(y=y, hop_length=hop)[0].astype(np.float64)
+    # Normalise to [0, 1] relative to each file's own peak energy
+    peak = np.max(rms)
+    return rms / peak if peak > 0 else rms
+
+
 def downsample_waveform(y, max_pts=WAVEFORM_MAX_POINTS):
     """Bucket-max downsample — preserves transients, hard-caps JSON payload."""
     if len(y) <= max_pts:
@@ -413,10 +441,16 @@ def process_file(f, root, y_ref_s_an, y_ref_e_an, y_ref_s_raw,
             "ref_meta":       ref_meta,
             "comp_meta":      comp_meta,
             # Waveform uses RAW audio so chart always reflects true signal shape
-            # abs() ensures master is strictly [0,+1] and dub strictly [-1,0]
-            # This gives a clean mirror without mixed-sign bleed across zero axis
-            "wave_master":    downsample_waveform(np.abs(normalize_visual(y_ref_s_raw))),
-            "wave_dub":       downsample_waveform(-np.abs(normalize_visual(y_c_s_raw))),
+            # Two datasets sent per file:
+            #   rms_*  : smoothed energy envelope — comparable across languages,
+            #             shows structural similarity for sync QC decision
+            #   raw_*  : abs-normalised waveform — shows acoustic detail,
+            #             useful for inspecting specific problem regions
+            # Both use abs() so Master sits above axis, Dub below (mirror layout)
+            "wave_rms_master":  downsample_waveform(rms_envelope(y_ref_s_raw)),
+            "wave_rms_dub":     downsample_waveform(-rms_envelope(y_c_s_raw)),
+            "wave_raw_master":  downsample_waveform(np.abs(normalize_visual(y_ref_s_raw))),
+            "wave_raw_dub":     downsample_waveform(-np.abs(normalize_visual(y_c_s_raw))),
             "chan_mismatch":  ref_meta["channels"] != comp_meta["channels"],
         }
 
