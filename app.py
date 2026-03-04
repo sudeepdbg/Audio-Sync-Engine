@@ -7,6 +7,7 @@ import soundfile as sf
 import pyloudnorm as pyln
 import threading
 import time
+import traceback
 from scipy import signal
 from scipy.signal import butter, lfilter
 from werkzeug.utils import secure_filename
@@ -49,6 +50,11 @@ def normalize_lufs(y, sr, target=-23.0):
         return pyln.normalize.loudness(y, loudness, target)
     except: return y
 
+def normalize_visual(y):
+    """Normalize for waveform overlay clarity."""
+    max_v = np.max(np.abs(y))
+    return y / max_v if max_v > 0 else y
+
 def get_file_metadata(path):
     try:
         info = sf.info(path)
@@ -75,7 +81,7 @@ def calculate_phase(path):
         data, _ = sf.read(path)
         if len(data.shape) < 2 or data.shape[1] < 2: return "1.0 (Mono)"
         corr = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
-        status = "Healthy" if corr > 0.4 else "🚩 Phase Issue"
+        status = "Healthy" if corr > 0.4 else "🚩 Issue"
         return f"{round(float(corr), 2)} ({status})"
     except: return "N/A"
 
@@ -96,6 +102,12 @@ def analyze_segment(y_ref, y_comp, sr):
 def index():
     return render_template('index.html')
 
+@app.route('/wipe', methods=['POST'])
+def wipe():
+    shutil.rmtree(DATA_DIR, ignore_errors=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    return jsonify({"status": "Cache Wiped"})
+
 @app.route('/upload', methods=['POST'])
 def upload():
     session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
@@ -111,7 +123,7 @@ def upload():
     ref_meta = get_file_metadata(ref_path)
     total_dur = librosa.get_duration(path=ref_path)
     
-    # Analyze Start and End of Master
+    # Process Master Start/End
     y_ref_s, _ = librosa.load(ref_path, sr=PERFORMANCE_SR, duration=60)
     y_ref_e, _ = librosa.load(ref_path, sr=PERFORMANCE_SR, offset=max(0, total_dur-60))
     
@@ -147,8 +159,8 @@ def upload():
             "levels": scan_levels(f_path),
             "ref_meta": ref_meta,
             "comp_meta": comp_meta,
-            "wave_a": y_ref_s[::50].tolist(),
-            "wave_r": y_c_s[::50].tolist(),
+            "wave_a": normalize_visual(y_ref_s[::50]).tolist(),
+            "wave_r": normalize_visual(y_c_s[::50]).tolist(),
             "chan_mismatch": ref_meta['channels'] != comp_meta['channels']
         })
 
