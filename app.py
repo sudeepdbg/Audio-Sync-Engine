@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 import traceback
-import subprocess
 import soundfile as sf
 import threading
 import time
@@ -18,13 +17,7 @@ from scipy import signal
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, render_template
 
-# --- ADVANCED AUDIO ENGINES ---
-try:
-    import demucs.separate
-    HAS_DEMUCS = True
-except ImportError:
-    HAS_DEMUCS = False
-
+# --- ADVANCED ENGINES ---
 try:
     import pyloudnorm as fln
     HAS_LOUDNORM = True
@@ -32,37 +25,33 @@ except ImportError:
     HAS_LOUDNORM = False
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 # 1GB Limit
-
-# --- BROADCAST STANDARDS ---
-MAX_DRIFT_MS = 30
-MAX_START_OFFSET_MS = 50
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 # 1GB Support
 PERFORMANCE_SR = 22050 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# --- BACKGROUND AUTO-CLEANUP ---
-def cleanup_worker():
-    """Deletes temporary session folders older than 1 hour to save disk space."""
+# --- AUTO-CLEANUP (Disk Protection) ---
+def auto_cleanup_worker():
+    """Background thread to delete temporary audio data older than 1 hour."""
     while True:
         now = time.time()
-        if os.path.exists(DATA_DIR):
-            for folder in os.listdir(DATA_DIR):
-                path = os.path.join(DATA_DIR, folder)
-                if os.path.isdir(path) and os.path.getmtime(path) < (now - 3600):
-                    shutil.rmtree(path, ignore_errors=True)
+        for folder in os.listdir(DATA_DIR):
+            folder_path = os.path.join(DATA_DIR, folder)
+            if os.path.isdir(folder_path):
+                if os.path.getmtime(folder_path) < now - 3600:
+                    shutil.rmtree(folder_path, ignore_errors=True)
         time.sleep(600)
 
-threading.Thread(target=cleanup_worker, daemon=True).start()
+threading.Thread(target=auto_cleanup_worker, daemon=True).start()
 
-# --- CORE UTILITIES ---
+# --- BROADCAST UTILITIES ---
+
 def get_file_metadata(path):
     try:
         info = sf.info(path)
         return {
-            "format": info.format,
             "sr": f"{info.samplerate} Hz",
             "duration": info.duration,
             "bit_depth": info.subtype,
@@ -70,10 +59,22 @@ def get_file_metadata(path):
             "channel_label": "5.1 Surround" if info.channels == 6 else "Stereo" if info.channels == 2 else f"{info.channels} Ch"
         }
     except:
-        return {"format": "ERR", "sr": "N/A", "duration": 0, "bit_depth": "N/A", "channels": 0, "channel_label": "N/A"}
+        return {"sr": "N/A", "duration": 0, "bit_depth": "N/A", "channels": 0, "channel_label": "N/A"}
+
+def calculate_phase(path):
+    """Calculates Pearson correlation between L/R channels for phase health."""
+    try:
+        data, _ = sf.read(path)
+        if len(data.shape) < 2 or data.shape[1] < 2:
+            return "1.0 (Mono)"
+        corr = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
+        status = "Healthy" if corr > 0.4 else "Wide" if corr > 0 else "🚩 Phase Issue"
+        return f"{round(float(corr), 2)} ({status})"
+    except:
+        return "N/A"
 
 def scan_levels(path):
-    """Calculates Integrated LUFS and True Peak for broadcast compliance."""
+    """Broadcast scanning for Integrated Loudness and Peak dBFS."""
     try:
         data, rate = sf.read(path)
         peak_db = 20 * np.log10(np.max(np.abs(data)) + 1e-10)
@@ -84,43 +85,17 @@ def scan_levels(path):
             lufs = f"{round(meter.integrated_loudness(data), 2)} LUFS"
         return {"lufs": lufs, "peak": f"{round(peak_db, 2)} dBFS"}
     except:
-        return {"lufs": "Scan Err", "peak": "Scan Err"}
-
-def isolate_vocals(file_path, output_root):
-    """Dialogue isolation to ensure background music doesn't skew sync results."""
-    if not HAS_DEMUCS: return file_path
-    try:
-        demucs.separate.main(["--mp3", "-n", "htdemucs", "-o", output_root, file_path])
-        base = os.path.basename(file_path).rsplit('.', 1)[0]
-        v_path = os.path.join(output_root, "htdemucs", base, "vocals.mp3")
-        return v_path if os.path.exists(v_path) else file_path
-    except: return file_path
-
-def get_offset(y_ref, y_comp, sr):
-    hop = 512
-    ref_env = librosa.feature.rms(y=y_ref, hop_length=hop)[0]
-    comp_env = librosa.feature.rms(y=y_comp, hop_length=hop)[0]
-    corr = signal.correlate(comp_env, ref_env, mode='full')
-    lag = np.argmax(corr) - (len(ref_env) - 1)
-    return round(float(lag * hop / sr * 1000), 2)
-
-def calculate_dna_match(y_ref, y_comp):
-    """Cross-correlation based confidence score (Content DNA)."""
-    try:
-        y_ref_norm = (y_ref - np.mean(y_ref)) / (np.std(y_ref) + 1e-6)
-        y_comp_norm = (y_comp - np.mean(y_comp)) / (np.std(y_comp) + 1e-6)
-        correlation = np.corrcoef(y_ref_norm[:5000], y_comp_norm[:5000])[0, 1]
-        return round(max(0, correlation * 100), 2)
-    except: return 0.0
+        return {"lufs": "ERR", "peak": "ERR"}
 
 def generate_visual(y_ref, y_comp):
+    """Professional high-contrast overlay waveform."""
     plt.style.use('dark_background')
-    fig = plt.figure(figsize=(12, 3), facecolor='#0f172a')
+    fig = plt.figure(figsize=(12, 4), facecolor='#0f172a')
     ax = fig.add_subplot(111)
     r = y_ref / (np.max(np.abs(y_ref)) + 1e-6)
     c = y_comp / (np.max(np.abs(y_comp)) + 1e-6)
-    ax.plot(r[:PERFORMANCE_SR*15], color='#2563eb', alpha=0.5, label="Master")
-    ax.plot(c[:PERFORMANCE_SR*15], color='#f59e0b', alpha=0.8, label="Dub")
+    ax.fill_between(range(len(r[:PERFORMANCE_SR*15])), r[:PERFORMANCE_SR*15], color='#3b82f6', alpha=0.4, label="Master")
+    ax.plot(c[:PERFORMANCE_SR*15], color='#f59e0b', linewidth=1.0, alpha=0.9, label="Dub")
     ax.set_axis_off()
     plt.tight_layout(pad=0)
     buf = BytesIO()
@@ -135,57 +110,51 @@ def index(): return render_template('index.html')
 def wipe():
     shutil.rmtree(DATA_DIR, ignore_errors=True)
     os.makedirs(DATA_DIR, exist_ok=True)
-    return jsonify({"status": "All cache and session data cleared."})
+    return jsonify({"status": "Cache Wiped"})
 
 @app.route('/upload', methods=['POST'])
 def upload():
     session_id = f"SES_{uuid.uuid4().hex[:6].upper()}"
     root = os.path.join(DATA_DIR, session_id)
     os.makedirs(root, exist_ok=True)
-    deep = request.form.get('deepAnalysis') == 'true'
-    
     try:
         ref_file = request.files['reference']
         ref_path = os.path.join(root, secure_filename(ref_file.filename))
         ref_file.save(ref_path)
         ref_meta = get_file_metadata(ref_path)
-        
-        # Isolate Master if needed
-        r_work = isolate_vocals(ref_path, root) if deep else ref_path
-        y_r, _ = librosa.load(r_work, sr=PERFORMANCE_SR, duration=30)
+        y_r, _ = librosa.load(ref_path, sr=PERFORMANCE_SR, duration=30)
         
         results = []
         for f in request.files.getlist('comparison[]'):
-            if not f.filename: continue
             f_path = os.path.join(root, secure_filename(f.filename))
             f.save(f_path)
-            
-            c_work = isolate_vocals(f_path, root) if deep else f_path
-            y_c, _ = librosa.load(c_work, sr=PERFORMANCE_SR, duration=30)
+            y_c, _ = librosa.load(f_path, sr=PERFORMANCE_SR, duration=30)
             
             comp_meta = get_file_metadata(f_path)
             levels = scan_levels(f_path)
-            offset = get_offset(y_r, y_c, PERFORMANCE_SR)
-            dna = calculate_dna_match(y_r, y_c)
+            phase = calculate_phase(f_path)
             
-            # Channel Mapping Check
-            chan_mismatch = ref_meta['channels'] != comp_meta['channels']
-
+            # Temporal Sync Calculation
+            corr = signal.correlate(y_c, y_r, mode='full')
+            lag = np.argmax(corr) - (len(y_r) - 1)
+            offset = round(float(lag / PERFORMANCE_SR * 1000), 2)
+            
+            # Content DNA
+            dna = round(max(0, np.corrcoef(y_r[:5000], y_c[:5000])[0, 1] * 100), 2)
+            
             results.append({
                 'filename': f.filename,
                 'offset_ms': offset,
-                'drift_ms': 0.0,
                 'dna_match': dna,
-                'visual': generate_visual(y_r, y_c),
+                'phase': phase,
+                'levels': levels,
                 'ref_meta': ref_meta,
                 'comp_meta': comp_meta,
-                'levels': levels,
-                'chan_mismatch': chan_mismatch,
-                'needs_review': abs(offset) > MAX_START_OFFSET_MS or chan_mismatch or dna < 15
+                'visual': generate_visual(y_r, y_c),
+                'chan_mismatch': ref_meta['channels'] != comp_meta['channels']
             })
-            
         return jsonify({'reference': ref_file.filename, 'results': results})
-    except Exception:
+    except:
         return jsonify({'error': str(traceback.format_exc())}), 500
 
 if __name__ == '__main__':
