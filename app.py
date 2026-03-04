@@ -307,7 +307,7 @@ def calculate_speed_factor(start_offset_ms, end_offset_ms, duration_sec):
     return {
         "ratio":   round(speed_factor, 6),
         "display": f"{speed_factor:.6f}×",
-        "delta":   f"{'+' if pct_delta >= 0 else ''}{pct_delta:.4f}%",
+        "delta":   f"{pct_delta:+.4f}%",
         "action":  action,
     }
 
@@ -318,8 +318,8 @@ def determine_status(offset_ms, drift_ms, dna_score):
         issues.append(f"Start offset {offset_ms}ms exceeds ±80ms threshold")
     if abs(drift_ms) > 150:
         issues.append(f"Drift {drift_ms}ms exceeds ±150ms threshold")
-    if dna_score < 55:
-        issues.append(f"DNA match {dna_score}% below 55% threshold")
+    if dna_score < 80:
+        issues.append(f"DNA match {dna_score}% below 80% threshold")
 
     return ("FAIL" if issues else "PASS",
             "; ".join(issues) if issues else "All metrics within thresholds")
@@ -383,8 +383,10 @@ def process_file(f, root, y_ref_s_an, y_ref_e_an, y_ref_s_raw,
             "ref_meta":       ref_meta,
             "comp_meta":      comp_meta,
             # Waveform uses RAW audio so chart always reflects true signal shape
-            "wave_master":    downsample_waveform(normalize_visual(y_ref_s_raw)),
-            "wave_dub":       downsample_waveform(-normalize_visual(y_c_s_raw)),
+            # abs() ensures master is strictly [0,+1] and dub strictly [-1,0]
+            # This gives a clean mirror without mixed-sign bleed across zero axis
+            "wave_master":    downsample_waveform(np.abs(normalize_visual(y_ref_s_raw))),
+            "wave_dub":       downsample_waveform(-np.abs(normalize_visual(y_c_s_raw))),
             "chan_mismatch":  ref_meta["channels"] != comp_meta["channels"],
         }
 
