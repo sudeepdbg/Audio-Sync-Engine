@@ -297,7 +297,7 @@
         const isPass  = r.status === 'PASS';
         const offAl   = Math.abs(r.offset_ms)      > 80;
         const driftAl = Math.abs(r.total_drift_ms) > 150;
-        const dnaAl   = r.dna_match < 55;
+        const dnaAl   = r.dna_match < 80;
         const sf      = r.speed_factor  || {};
         const lv      = r.levels        || {};
         const of      = r.offset_frames || {};
@@ -487,39 +487,42 @@
                     silent: true,
                     legendHoverLink: false
                 },
-                // Master — positive side (above zero)
+                // Master — strictly [0,+1] after abs() on backend → always above axis
+                // origin:'auto' in ECharts fills from the data line toward zero baseline,
+                // which for positive-only data means filling downward to zero correctly.
                 {
                     name: 'Master',
                     type: 'line',
                     data: waveM,
                     symbol: 'none',
-                    lineStyle: { color: '#3b82f6', width: 1, opacity: 0.9 },
+                    lineStyle: { color: '#3b82f6', width: 1.2, opacity: 0.95 },
                     areaStyle: {
-                        origin: 'start',      // fills DOWN from the line to zero
+                        origin: 0,            // fill toward y=0 from above
                         color: {
                             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(59,130,246,0.3)' },
-                                { offset: 1,   color: 'rgba(59,130,246,0.02)' }
+                                { offset: 0,   color: 'rgba(59,130,246,0.35)' },
+                                { offset: 1,   color: 'rgba(59,130,246,0.03)' }
                             ]
                         }
                     },
                     large: true, largeThreshold: 500, z: 2
                 },
-                // Dub — negative side (below zero, pre-negated)
+                // Dub — strictly [-1,0] after -abs() on backend → always below axis
+                // origin:0 fills upward from the line toward y=0 baseline.
                 {
                     name: 'Dub',
                     type: 'line',
                     data: waveD,
                     symbol: 'none',
-                    lineStyle: { color: '#f59e0b', width: 1, opacity: 0.9 },
+                    lineStyle: { color: '#f59e0b', width: 1.2, opacity: 0.95 },
                     areaStyle: {
-                        origin: 'end',        // fills UP from the line to zero
+                        origin: 0,            // fill toward y=0 from below
                         color: {
                             type: 'linear', x: 0, y: 1, x2: 0, y2: 0,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(245,158,11,0.3)' },
-                                { offset: 1,   color: 'rgba(245,158,11,0.02)' }
+                                { offset: 0,   color: 'rgba(245,158,11,0.35)' },
+                                { offset: 1,   color: 'rgba(245,158,11,0.03)' }
                             ]
                         }
                     },
