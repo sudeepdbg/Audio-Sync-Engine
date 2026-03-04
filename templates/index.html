@@ -182,7 +182,7 @@
         </div>
         <div class="tog">
             <input type="checkbox" id="vocalDna" checked>
-            <label for="vocalDna">Vocal DNA Filter</label>
+            <label for="vocalDna" title="HPSS percussive separation + 300–3400Hz bandpass. Isolates speech transients for more accurate onset DNA scoring.">Vocal DNA Filter</label>
         </div>
         <button class="btn-primary" id="runBtn" onclick="runQC()">Run QC Engine</button>
     </div>
@@ -333,7 +333,7 @@
                     <div class="sb-val">${r.total_drift_ms}ms</div>
                 </div>
                 <div class="sb ${dnaAl ? 'al' : ''}">
-                    <div class="sb-lbl">Onset DNA</div>
+                    <div class="sb-lbl">Onset DNA${r.vocal_filter ? ' <span style="color:var(--brand);font-size:8px">▲ HPSS</span>' : ''}</div>
                     <div class="sb-val">${r.dna_match}%</div>
                 </div>
                 <div class="sb">
@@ -423,7 +423,7 @@
                 <div class="wave-foot">
                     <div class="wl"><div class="wd" style="background:#3b82f6"></div>Master (above axis)</div>
                     <div class="wl"><div class="wd" style="background:#f59e0b"></div>Dub (below axis, mirrored)</div>
-                    <div class="wave-note">First 60s segment · ${WAVEFORM_MAX_POINTS} display points</div>
+                    <div class="wave-note">${r.vocal_filter ? 'DNA analysis: HPSS + bandpass filtered · ' : ''}First 60s segment · ${WAVEFORM_MAX_POINTS} display points</div>
                 </div>
             </div>
         `;
