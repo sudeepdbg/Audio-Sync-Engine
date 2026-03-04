@@ -2,62 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sync Engine Pro | Broadcast QC</title>
     <style>
-        /* Base Styles */
-        :root { --brand: #2563eb; --danger: #ef4444; --success: #10b981; --bg: #f1f5f9; }
-        * { box-sizing: border-box; margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
-        body { background: var(--bg); display: flex; justify-content: center; padding: 2rem; min-height: 100vh; color: #1e293b; }
-        .container { max-width: 1100px; width: 100%; }
+        :root { --brand: #2563eb; --danger: #ef4444; --success: #10b981; }
+        * { box-sizing: border-box; margin: 0; font-family: 'Inter', sans-serif; }
+        body { background: #f1f5f9; padding: 2rem; color: #1e293b; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 2rem; }
         
-        /* Layout Components */
-        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2.5rem; margin-bottom: 2rem; border: 1px solid #e2e8f0; }
-        h1 { font-size: 2.2rem; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
-        .subtitle { color: #64748b; margin-bottom: 2.5rem; font-size: 1.1rem; }
+        .upload-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .upload-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 2rem; border-radius: 16px; text-align: center; }
         
-        /* Upload UI */
-        .upload-section { display: flex; flex-wrap: wrap; gap: 2rem; }
-        .upload-box { flex: 1 1 300px; background: #f8fafc; border-radius: 16px; padding: 2rem; border: 2px dashed #cbd5e1; transition: all 0.2s; text-align: center; }
-        .upload-box.dragover { border-color: var(--brand); background: #eff6ff; }
-        .file-input-label { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 40px; padding: 0.7rem 1.5rem; cursor: pointer; margin-top: 10px; font-weight: 500; font-size: 0.9rem; }
-        .file-input-label:hover { border-color: var(--brand); color: var(--brand); }
-        input[type="file"] { display: none; }
-        
-        /* Buttons & Toggles */
-        .primary-btn { background: var(--brand); color: white; border: none; border-radius: 40px; padding: 0.9rem 2.5rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .secondary-btn { background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 40px; padding: 0.9rem 1.8rem; font-weight: 600; cursor: pointer; }
-        
-        .mode-toggle { display: flex; align-items: center; gap: 10px; margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd; cursor: pointer; }
+        .primary-btn { background: var(--brand); color: white; border: none; padding: 1rem 2.5rem; border-radius: 40px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .primary-btn:disabled { opacity: 0.5; }
 
-        /* Results UI */
-        .result-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem; margin-top: 2rem; animation: fadeIn 0.4s ease-out; position: relative; }
+        .mode-toggle { display: block; margin: 1rem 0; padding: 1rem; background: #eff6ff; border-radius: 12px; border: 1px solid #bae6fd; font-weight: 600; }
+
+        .result-item { background: white; border-radius: 16px; padding: 2rem; margin-top: 2rem; border: 1px solid #e2e8f0; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .status-badge { padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; float: right; }
-        .status-ok { background: #dcfce7; color: #166534; }
-        .status-review { background: #fee2e2; color: #991b1b; }
 
-        /* Metrics Grid */
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
         .stat-card { background: #f8fafc; padding: 1.25rem; border-radius: 12px; border: 1px solid #f1f5f9; text-align: center; }
-        .stat-label { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .stat-label { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
         .stat-value { color: #1e293b; font-size: 1.1rem; font-weight: 800; }
-        
-        /* Collapsible Table */
-        .details-btn { background: #f1f5f9; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 700; margin: 15px 0; display: block; }
-        .meta-table { width: 100%; border-collapse: collapse; display: none; margin-bottom: 1.5rem; font-size: 13px; background: #fff; border: 1px solid #f1f5f9; }
-        .meta-table th { text-align: left; padding: 10px; background: #f8fafc; color: #64748b; border-bottom: 1px solid #f1f5f9; }
-        .meta-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-        .mismatch { color: var(--danger); font-weight: bold; background: #fff1f2; }
 
-        .waveform-container { position: relative; margin-top: 1rem; background: #0f172a; border-radius: 12px; overflow: hidden; }
-        .waveform-img { width: 100%; display: block; opacity: 0.9; }
-        .waveform-tag { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; pointer-events: none; }
+        .meta-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .meta-table th { text-align: left; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 0.8rem; }
+        .meta-table td { padding: 10px; border: 1px solid #e2e8f0; font-size: 0.85rem; }
+
+        .waveform-img { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 1.5rem; background: white; }
+        .status-badge { float: right; padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.8rem; font-weight: 700; }
+        .pass { background: #dcfce7; color: #166534; }
+        .fail { background: #fee2e2; color: #991b1b; }
 
         #loading { display: none; align-items: center; gap: 10px; color: var(--brand); font-weight: 700; }
-        .spinner { width: 18px; height: 18px; border: 3px solid #bfdbfe; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 20px; height: 20px; border: 3px solid #bfdbfe; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -65,51 +44,38 @@
     <div class="container">
         <div class="card">
             <h1>🎧 Sync Engine <span style="color: var(--brand)">Pro</span></h1>
-            <p class="subtitle">Broadcast temporal alignment, Phase, and Bit-Depth verification.</p>
-            
+            <p style="color: #64748b; margin-bottom: 2rem;">Professional Temporal Alignment & Broadcast Quality Control</p>
+
             <div class="upload-section">
-                <div class="upload-box" id="box-ref">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">📌 Reference Master</h3>
-                    <p style="font-size: 0.75rem; color: #64748b;">Original High-Res File</p>
-                    <label for="refFile" class="file-input-label">Select Master</label>
-                    <input type="file" id="refFile">
-                    <div id="refName" style="margin-top:10px; font-size:0.8rem; color:var(--brand); font-weight:600;"></div>
+                <div class="upload-box">
+                    <strong>📌 Master Reference</strong><br>
+                    <input type="file" id="refFile" style="margin-top: 15px;">
                 </div>
-                
-                <div class="upload-box" id="box-comp">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">🔁 Comparison Dubs</h3>
-                    <p style="font-size: 0.75rem; color: #64748b;">Multiple localizations supported</p>
-                    <label for="compFiles" class="file-input-label">Select Dubs</label>
-                    <input type="file" id="compFiles" multiple>
-                    <div id="compCount" style="margin-top:10px; font-size:0.8rem; color:var(--brand); font-weight:600;"></div>
+                <div class="upload-box">
+                    <strong>🔁 Comparison Dubs</strong><br>
+                    <input type="file" id="compFiles" multiple style="margin-top: 15px;">
                 </div>
             </div>
 
             <label class="mode-toggle">
-                <input type="checkbox" id="deepAnalysis">
-                <span>🚀 <b>Neural Vocal DNA Mode</b> (Isolates dialogue for 100% sync accuracy)</span>
+                <input type="checkbox" id="deepAnalysis"> 🚀 Neural Vocal DNA Mode (Dialogue Isolation)
             </label>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 2rem; gap: 1rem; align-items: center;">
-                <div id="loading"><div class="spinner"></div> Processing Signals...</div>
-                <button class="primary-btn" id="runBtn" onclick="uploadFiles()">▶ Run QC Analysis</button>
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 20px;">
+                <div id="loading"><div class="spinner"></div> Extracting DNA...</div>
+                <button class="primary-btn" id="runBtn" onclick="uploadFiles()">Run Analysis</button>
             </div>
         </div>
-
         <div id="results"></div>
     </div>
 
     <script>
-        // File selection UI updates
-        document.getElementById('refFile').onchange = (e) => document.getElementById('refName').innerText = e.target.files[0].name;
-        document.getElementById('compFiles').onchange = (e) => document.getElementById('compCount').innerText = `${e.target.files.length} tracks loaded`;
-
         async function uploadFiles() {
+            const fd = new FormData();
             const ref = document.getElementById('refFile').files[0];
             const comps = document.getElementById('compFiles').files;
-            if (!ref || comps.length === 0) return alert("Upload Master and Dubs first.");
+            if(!ref || comps.length === 0) return alert("Select files first.");
 
-            const fd = new FormData();
             fd.append('reference', ref);
             fd.append('deepAnalysis', document.getElementById('deepAnalysis').checked);
             for (let f of comps) fd.append('comparison[]', f);
@@ -122,7 +88,7 @@
                 const data = await res.json();
                 renderResults(data);
             } catch (e) {
-                alert("Analysis failed. Check server logs.");
+                alert("Server error. Check console.");
             } finally {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('runBtn').disabled = false;
@@ -130,51 +96,30 @@
         }
 
         function renderResults(data) {
-            const container = document.getElementById('results');
-            let html = `<h2 style="margin: 1rem 0 2rem 0">Master: <span style="color:var(--brand)">${data.reference}</span></h2>`;
-            
-            data.results.forEach((r, i) => {
-                const bitMismatch = r.ref_meta.bit_depth !== r.comp_meta.bit_depth;
-                const phaseIssue = r.phase.includes("Phase Issue");
-
+            let html = `<h2 style="margin: 2rem 0;">Analysis for: ${data.reference}</h2>`;
+            data.results.forEach(r => {
                 html += `
                 <div class="result-item">
-                    <span class="status-badge ${r.needs_review ? 'status-review' : 'status-ok'}">
-                        ${r.needs_review ? '⚠️ FLAG' : '✅ PASS'}
-                    </span>
-                    <h4 style="font-size: 1.1rem; margin-bottom: 1rem;">${r.filename}</h4>
+                    <span class="status-badge ${r.needs_review ? 'fail' : 'pass'}">${r.needs_review ? '🚩 FLAG' : '✅ PASS'}</span>
+                    <h3>${r.filename}</h3>
                     
                     <div class="stats-grid">
                         <div class="stat-card"><div class="stat-label">Start Offset</div><div class="stat-value">${r.offset_ms}ms</div></div>
                         <div class="stat-card"><div class="stat-label">Total Drift</div><div class="stat-value">${r.drift_ms}ms</div></div>
-                        <div class="stat-card"><div class="stat-label">DNA Match</div><div class="stat-value">${r.dna}%</div></div>
-                        <div class="stat-card"><div class="stat-label">Phase</div><div class="stat-value" style="color:${phaseIssue ? 'var(--danger)':'inherit'}">${r.phase}</div></div>
+                        <div class="stat-card"><div class="stat-label">Loudness</div><div class="stat-value">${r.quality.lufs}</div></div>
+                        <div class="stat-card"><div class="stat-label">Peak</div><div class="stat-value">${r.quality.peak}</div></div>
                     </div>
 
-                    <button class="details-btn" onclick="toggle(${i})">+ Expand Technical Specs</button>
-                    
-                    <table class="meta-table" id="meta-${i}">
-                        <tr><th>Technical Property</th><th>Master Reference</th><th>Comparison Dub</th></tr>
-                        <tr><td>Format / Subtype</td><td>${r.ref_meta.format}</td><td>${r.comp_meta.format}</td></tr>
-                        <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td class="${bitMismatch ? 'mismatch' : ''}">${r.comp_meta.bit_depth}</td></tr>
+                    <table class="meta-table">
+                        <tr><th>Tech Spec</th><th>Master</th><th>Comparison</th></tr>
+                        <tr><td>Bit Depth</td><td>${r.ref_meta.bit_depth}</td><td>${r.comp_meta.bit_depth}</td></tr>
                         <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
-                        <tr><td>Target Loudness</td><td>N/A</td><td>${r.quality.lufs}</td></tr>
-                        <tr><td>Peak Level</td><td>N/A</td><td>${r.quality.peak}</td></tr>
                     </table>
 
-                    <div class="waveform-container">
-                        <span class="waveform-tag">Temporal Sync (Master vs Dub)</span>
-                        <img class="waveform-img" src="data:image/png;base64,${r.visual}">
-                    </div>
+                    <img class="waveform-img" src="data:image/png;base64,${r.visual}">
                 </div>`;
             });
-            container.innerHTML = html;
-            container.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function toggle(i) {
-            const t = document.getElementById('meta-' + i);
-            t.style.display = t.style.display === 'table' ? 'none' : 'table';
+            document.getElementById('results').innerHTML = html;
         }
     </script>
 </body>
