@@ -140,11 +140,31 @@
 
         /* ── WAVEFORM ── */
         .wave-wrap { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
-        .wave-box  { width: 100%; height: 210px; background: #f8fafc; }
-        .wave-foot { display: flex; gap: 20px; align-items: center; padding: 7px 14px; background: #f1f5f9; border-top: 1px solid var(--border); }
+        .wave-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 14px; background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .wave-title { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; font-family: var(--mono); color: var(--muted); }
+        .wave-title strong { color: var(--text); }
+        .wave-tabs { display: flex; gap: 4px; }
+        .wave-tab {
+            font-size: 10px; font-weight: 700; font-family: var(--mono);
+            padding: 3px 10px; border-radius: 5px; cursor: pointer; border: 1px solid var(--border);
+            background: var(--card); color: var(--muted); transition: all .15s; letter-spacing: 0.5px;
+        }
+        .wave-tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+        .wave-tab:hover:not(.active) { border-color: var(--brand); color: var(--brand); }
+        .wave-box  { width: 100%; height: 190px; background: #f8fafc; }
+        .wave-foot {
+            display: flex; gap: 16px; align-items: center;
+            padding: 6px 14px; background: #f1f5f9;
+            border-top: 1px solid var(--border); flex-wrap: wrap;
+        }
         .wl { display: flex; align-items: center; gap: 7px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
         .wd { width: 20px; height: 2px; border-radius: 1px; }
         .wave-note { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-left: auto; font-style: italic; }
+        .wave-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); font-style: italic; }
 
         @media (max-width: 720px) {
             .panel { flex-direction: column; align-items: stretch; }
@@ -419,36 +439,94 @@
 
             <!-- Waveform -->
             <div class="wave-wrap">
+                <div class="wave-head">
+                    <div class="wave-title">
+                        <strong>Waveform Comparison</strong>
+                        &nbsp;·&nbsp; Mirrored dual-track · First 60s
+                        ${r.vocal_filter ? ' &nbsp;·&nbsp; HPSS filtered' : ''}
+                    </div>
+                    <div class="wave-tabs">
+                        <button class="wave-tab active" id="tab-rms-${i}" onclick="switchWave(${i},'rms')">RMS Envelope</button>
+                        <button class="wave-tab"        id="tab-raw-${i}" onclick="switchWave(${i},'raw')">Raw Waveform</button>
+                    </div>
+                </div>
                 <div class="wave-box" id="wv-${i}"></div>
                 <div class="wave-foot">
                     <div class="wl"><div class="wd" style="background:#3b82f6"></div>Master (above axis)</div>
-                    <div class="wl"><div class="wd" style="background:#f59e0b"></div>Dub (below axis, mirrored)</div>
-                    <div class="wave-note">${r.vocal_filter ? 'DNA analysis: HPSS + bandpass filtered · ' : ''}First 60s segment · ${WAVEFORM_MAX_POINTS} display points</div>
+                    <div class="wl"><div class="wd" style="background:#f59e0b"></div>Dub (below axis)</div>
+                    <div class="wave-desc" id="wv-desc-${i}">
+                        Smoothed energy envelope — comparable across languages, shows structural sync
+                    </div>
                 </div>
             </div>
         `;
 
         container.appendChild(div);
-        renderWave(i, r.wave_master, r.wave_dub);
+        // Store both datasets on the element for tab switching
+        const wvEl = document.getElementById(`wv-${i}`);
+        wvEl._data = {
+            rms: { master: r.wave_rms_master, dub: r.wave_rms_dub },
+            raw: { master: r.wave_raw_master, dub: r.wave_raw_dub }
+        };
+        renderWave(i, r.wave_rms_master, r.wave_rms_dub, 'rms');
     }
 
     const WAVEFORM_MAX_POINTS = 2000;
 
-    /* ── ECharts mirrored dual-track waveform ─────────────────────────────── */
-    function renderWave(i, waveM, waveD) {
+    // Chart instance registry — keyed by index, used for tab switching
+    const _charts = {};
+
+    /* ── Tab switch: swap RMS ↔ Raw data in existing chart ── */
+    function switchWave(i, mode) {
+        const el   = document.getElementById(`wv-${i}`);
+        const desc = document.getElementById(`wv-desc-${i}`);
+        if (!el?._data) return;
+
+        // Update tab button states
+        document.getElementById(`tab-rms-${i}`).classList.toggle('active', mode === 'rms');
+        document.getElementById(`tab-raw-${i}`).classList.toggle('active', mode === 'raw');
+
+        const d = el._data[mode];
+
+        // Update description text
+        if (desc) {
+            desc.textContent = mode === 'rms'
+                ? 'Smoothed energy envelope — comparable across languages, shows structural sync'
+                : 'Raw audio samples (abs-normalised) — acoustic detail, compare transient shapes';
+        }
+
+        // Update tooltip label
+        const label = mode === 'rms' ? 'RMS energy' : 'Raw amplitude';
+
+        // Update series data in the existing chart (no full re-render)
+        const chart = _charts[i];
+        if (!chart) { renderWave(i, d.master, d.dub, mode); return; }
+
+        chart.setOption({
+            series: [
+                { name: '_zero', data: new Array(Math.min(d.master.length, d.dub.length)).fill(0) },
+                { name: 'Master', data: d.master },
+                { name: 'Dub',    data: d.dub }
+            ]
+        });
+
+        // Update tooltip mode label via closure hack
+        chart._waveMode = label;
+    }
+
+    /* ── ECharts mirrored dual-track waveform ── */
+    function renderWave(i, waveM, waveD, mode) {
         const el = document.getElementById(`wv-${i}`);
         if (!el || !waveM?.length || !waveD?.length) return;
 
         const chart = echarts.init(el, null, { renderer: 'canvas' });
-
-        // waveM is already normalised to [0,1] (master, above axis)
-        // waveD is pre-negated on server to be in [-1,0] (dub, below axis)
-        // Both share the same time axis → proper visual alignment
+        _charts[i]  = chart;
+        chart._waveMode = mode === 'rms' ? 'RMS energy' : 'Raw amplitude';
 
         chart.setOption({
             backgroundColor: '#f8fafc',
             animation: false,
-            grid: { top: 16, bottom: 16, left: 46, right: 16 },
+            grid: { top: 14, bottom: 14, left: 46, right: 16 },
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
@@ -459,70 +537,51 @@
             },
             yAxis: {
                 type: 'value',
-                min: -1.1,
-                max:  1.1,
-                interval: 0.5,
+                min: -1.1, max: 1.1, interval: 0.5,
                 axisLine: { show: false },
                 axisTick: { show: false },
                 axisLabel: {
-                    color: '#94a3b8',
-                    fontSize: 9,
-                    fontFamily: 'IBM Plex Mono',
+                    color: '#94a3b8', fontSize: 9, fontFamily: 'IBM Plex Mono',
                     formatter: v => v === 0 ? '0' : v.toFixed(1)
                 },
-                splitLine: {
-                    show: true,
-                    lineStyle: { color: '#e8edf4', type: 'dashed', width: 1 }
-                }
+                splitLine: { show: true, lineStyle: { color: '#e8edf4', type: 'dashed', width: 1 } }
             },
             series: [
-                // Zero axis marker — rendered as a thin solid line
+                // Zero axis line
                 {
-                    name: '_zero',
-                    type: 'line',
+                    name: '_zero', type: 'line',
                     data: new Array(Math.min(waveM.length, waveD.length)).fill(0),
                     symbol: 'none',
                     lineStyle: { color: '#cbd5e1', width: 1.5, type: 'solid' },
-                    z: 1,
-                    silent: true,
-                    legendHoverLink: false
+                    z: 1, silent: true, legendHoverLink: false
                 },
-                // Master — strictly [0,+1] after abs() on backend → always above axis
-                // origin:'auto' in ECharts fills from the data line toward zero baseline,
-                // which for positive-only data means filling downward to zero correctly.
+                // Master — positive [0,+1], fills down to zero
                 {
-                    name: 'Master',
-                    type: 'line',
-                    data: waveM,
+                    name: 'Master', type: 'line', data: waveM,
                     symbol: 'none',
                     lineStyle: { color: '#3b82f6', width: 1.2, opacity: 0.95 },
                     areaStyle: {
-                        origin: 0,            // fill toward y=0 from above
-                        color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                        origin: 0,
+                        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(59,130,246,0.35)' },
-                                { offset: 1,   color: 'rgba(59,130,246,0.03)' }
+                                { offset: 0, color: 'rgba(59,130,246,0.35)' },
+                                { offset: 1, color: 'rgba(59,130,246,0.03)' }
                             ]
                         }
                     },
                     large: true, largeThreshold: 500, z: 2
                 },
-                // Dub — strictly [-1,0] after -abs() on backend → always below axis
-                // origin:0 fills upward from the line toward y=0 baseline.
+                // Dub — negative [-1,0], fills up to zero
                 {
-                    name: 'Dub',
-                    type: 'line',
-                    data: waveD,
+                    name: 'Dub', type: 'line', data: waveD,
                     symbol: 'none',
                     lineStyle: { color: '#f59e0b', width: 1.2, opacity: 0.95 },
                     areaStyle: {
-                        origin: 0,            // fill toward y=0 from below
-                        color: {
-                            type: 'linear', x: 0, y: 1, x2: 0, y2: 0,
+                        origin: 0,
+                        color: { type: 'linear', x: 0, y: 1, x2: 0, y2: 0,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(245,158,11,0.35)' },
-                                { offset: 1,   color: 'rgba(245,158,11,0.03)' }
+                                { offset: 0, color: 'rgba(245,158,11,0.35)' },
+                                { offset: 1, color: 'rgba(245,158,11,0.03)' }
                             ]
                         }
                     },
@@ -538,18 +597,20 @@
                 textStyle: { color: '#cbd5e1', fontSize: 11, fontFamily: 'IBM Plex Mono' },
                 axisPointer: { lineStyle: { color: '#475569', width: 1 } },
                 formatter: params => {
-                    // Skip the zero-line series (index 0)
-                    const mSeries = params.find(p => p.seriesName === 'Master');
-                    const dSeries = params.find(p => p.seriesName === 'Dub');
-                    const m   = mSeries?.value ?? 0;
-                    const d   = -(dSeries?.value ?? 0);     // un-negate for display
-                    const idx = mSeries?.dataIndex ?? '';
-                    const diff = Math.abs(m - d).toFixed(3);
-                    return `<div style="font-size:11px">
-                        <b style="color:#e2e8f0">Sample ${idx}</b><br/>
+                    const mS  = params.find(p => p.seriesName === 'Master');
+                    const dS  = params.find(p => p.seriesName === 'Dub');
+                    const m   = mS?.value ?? 0;
+                    const d   = -(dS?.value ?? 0);
+                    const idx = mS?.dataIndex ?? '';
+                    const diff    = Math.abs(m - d).toFixed(3);
+                    const diffPct = m > 0 ? ((Math.abs(m - d) / m) * 100).toFixed(1) : '—';
+                    const lbl = chart._waveMode || 'value';
+                    return `<div style="font-size:11px;line-height:1.6">
+                        <b style="color:#e2e8f0">Point ${idx}</b>
+                        <span style="color:#64748b;font-size:9px"> ${lbl}</span><br/>
                         <span style="color:#93c5fd">▲ Master: ${m.toFixed(3)}</span><br/>
                         <span style="color:#fcd34d">▼ Dub:    ${d.toFixed(3)}</span><br/>
-                        <span style="color:#94a3b8">  Δ:      ${diff}</span>
+                        <span style="color:#94a3b8">  Δ:      ${diff} (${diffPct}%)</span>
                     </div>`;
                 }
             }
