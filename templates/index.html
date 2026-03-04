@@ -304,7 +304,7 @@
         const df      = r.drift_frames  || {};
 
         const sfDelta = parseFloat(sf.delta) || 0;
-        const sfClass = Math.abs(sfDelta) > 0.005 ? 'wn' : '';
+        const sfClass = Math.abs(sfDelta) > 0.05 ? 'wn' : '';
 
         // Frame value helper — highlight if large
         const fv = (val, threshold) => {
@@ -385,7 +385,7 @@
                     </div>
                     <div class="speed-cell">
                         <div class="slbl">Δ Speed</div>
-                        <div class="sval" style="color:${Math.abs(sfDelta)>0.005?'var(--warn)':'var(--text)'}">${x(sf.delta || 'N/A')}</div>
+                        <div class="sval" style="color:${Math.abs(sfDelta)>0.05?'var(--warn)':'var(--text)'}">${x(sf.delta || 'N/A')}</div>
                     </div>
                     <div class="speed-action">${x(sf.action || '')}</div>
                 </div>
