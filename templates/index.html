@@ -7,230 +7,208 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand:       #3b6ef8;
-            --brand-dim:   #1e3a8a22;
-            --bg:          #f0f3f9;
-            --card:        #ffffff;
-            --text:        #0d1526;
-            --muted:       #64748b;
-            --border:      #e2e8f0;
-            --danger:      #e53e3e;
-            --danger-bg:   #fff5f5;
-            --danger-bd:   #feb2b2;
-            --success:     #0d9f6e;
-            --success-bg:  #f0fdf8;
-            --success-bd:  #6ee7b7;
-            --warn:        #d97706;
-            --warn-bg:     #fffbeb;
-            --mono:        'IBM Plex Mono', monospace;
-            --sans:        'IBM Plex Sans', sans-serif;
+            --brand:      #2f6ef5;
+            --brand-dim:  rgba(47,110,245,0.08);
+            --bg:         #eef1f7;
+            --card:       #ffffff;
+            --text:       #0d1526;
+            --muted:      #64748b;
+            --border:     #dde3ec;
+            --danger:     #dc2626;
+            --danger-bg:  #fff5f5;
+            --danger-bd:  #fca5a5;
+            --success:    #059669;
+            --success-bg: #f0fdf9;
+            --success-bd: #6ee7b7;
+            --warn:       #d97706;
+            --warn-bg:    #fffbeb;
+            --warn-bd:    #fcd34d;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 14px; }
         body { font-family: var(--sans); background: var(--bg); color: var(--text); padding: 32px 24px; min-height: 100vh; }
-        .page { max-width: 1120px; margin: 0 auto; }
+        .page { max-width: 1140px; margin: 0 auto; }
 
-        /* ── HEADER ── */
-        .top-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-        .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
-        .logo span { color: var(--brand); }
-        .logo sub { font-size: 11px; font-weight: 500; color: var(--muted); vertical-align: baseline; margin-left: 6px; letter-spacing: 0; }
-        .top-tagline { font-size: 12px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+        /* ── TOP BAR ── */
+        .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 26px; }
+        .logo { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: baseline; gap: 6px; }
+        .logo .accent { color: var(--brand); }
+        .logo .ver { font-size: 10px; font-weight: 500; color: var(--muted); font-family: var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+        .tagline { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); letter-spacing: 0.2px; }
 
-        /* ── CONTROL PANEL ── */
+        /* ── PANEL ── */
         .panel {
             background: var(--card);
-            border-radius: 14px;
             border: 1px solid var(--border);
-            padding: 20px 24px;
+            border-radius: 14px;
+            padding: 18px 22px;
             display: flex;
             align-items: flex-end;
-            gap: 18px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+            gap: 16px;
+            margin-bottom: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             flex-wrap: wrap;
         }
-        .field { flex: 1; min-width: 180px; }
-        .field-label {
-            display: block;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.4px;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-bottom: 7px;
-            font-family: var(--mono);
+        .field { flex: 1; min-width: 200px; }
+        .field-lbl {
+            display: block; font-size: 9px; font-weight: 700;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            color: var(--muted); margin-bottom: 6px; font-family: var(--mono);
         }
-        .file-drop {
+        .drop {
             position: relative;
             border: 1.5px dashed var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            cursor: pointer;
-            transition: border-color 0.18s, background 0.18s;
-            background: var(--bg);
+            border-radius: 8px; padding: 9px 13px; cursor: pointer;
+            background: var(--bg); transition: border-color .15s, background .15s;
             overflow: hidden;
         }
-        .file-drop:hover { border-color: var(--brand); background: var(--brand-dim); }
-        .file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
-        .file-drop .fname {
-            font-size: 13px;
-            font-family: var(--mono);
-            font-weight: 500;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .drop:hover { border-color: var(--brand); background: var(--brand-dim); }
+        .drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .drop .fname { font-size: 12px; font-family: var(--mono); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .drop .fname.ph { color: var(--muted); }
+
+        .tog { display: flex; align-items: center; gap: 7px; padding-bottom: 2px; white-space: nowrap; }
+        .tog label { font-size: 13px; font-weight: 600; cursor: pointer; }
+        input[type=checkbox] { accent-color: var(--brand); width: 15px; height: 15px; cursor: pointer; }
+
+        .btn-primary {
+            background: var(--brand); color: #fff; border: none;
+            padding: 10px 24px; border-radius: 8px; font-family: var(--sans);
+            font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap;
+            transition: opacity .15s, transform .1s;
         }
-        .file-drop .fname.empty { color: var(--muted); font-weight: 400; }
-
-        .toggle-row { display: flex; align-items: center; gap: 7px; padding-bottom: 3px; white-space: nowrap; }
-        .toggle-row label { font-size: 13px; font-weight: 600; cursor: pointer; }
-        input[type="checkbox"] { accent-color: var(--brand); width: 15px; height: 15px; cursor: pointer; }
-
-        .btn-run {
-            background: var(--brand);
-            color: #fff;
-            border: none;
-            padding: 11px 26px;
-            border-radius: 8px;
-            font-family: var(--sans);
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            transition: opacity 0.15s, transform 0.1s;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .btn-run:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-        .btn-run:disabled { opacity: 0.45; cursor: not-allowed; }
-
+        .btn-primary:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
         .btn-ghost {
-            background: none;
-            color: var(--muted);
-            border: 1px solid var(--border);
-            padding: 9px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: var(--sans);
-            transition: color 0.2s, border-color 0.2s;
+            background: none; color: var(--muted); border: 1px solid var(--border);
+            padding: 8px 15px; border-radius: 8px; font-family: var(--sans);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: color .18s, border-color .18s;
         }
         .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
 
         /* ── SUMMARY BAR ── */
-        .summary-bar {
-            display: none;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px 22px;
-            margin-bottom: 22px;
-            gap: 28px;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        .sum-bar {
+            display: none; background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 13px 20px; margin-bottom: 20px;
+            gap: 24px; align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
-        .summary-bar.show { display: flex; }
-        .sum-stat .val { font-size: 24px; font-weight: 700; line-height: 1; font-family: var(--mono); }
-        .sum-stat .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; margin-top: 2px; font-family: var(--mono); }
-        .sum-stat.ok  .val { color: var(--success); }
-        .sum-stat.bad .val { color: var(--danger); }
-        .sdiv { width: 1px; height: 32px; background: var(--border); }
+        .sum-bar.on { display: flex; }
+        .ss .v { font-size: 22px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+        .ss .l { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-top: 2px; font-family: var(--mono); }
+        .ss.ok .v { color: var(--success); }
+        .ss.bad .v { color: var(--danger); }
+        .sd { width: 1px; height: 28px; background: var(--border); }
 
-        /* ── LOADING ── */
-        #loader { display: none; text-align: center; padding: 56px; }
-        #loader.show { display: block; }
-        .spin {
-            width: 40px; height: 40px;
-            border: 3px solid var(--border);
-            border-top-color: var(--brand);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            margin: 0 auto 14px;
-        }
+        /* ── LOADER ── */
+        #loader { display: none; text-align: center; padding: 56px 20px; }
+        #loader.on { display: block; }
+        .spin { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 14px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #loader .load-msg { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-        #loader .load-sub { font-size: 13px; color: var(--muted); }
+        #loader .lm { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        #loader .ls { font-size: 12px; color: var(--muted); }
 
         /* ── ERROR BANNER ── */
-        .err-banner { display: none; background: var(--danger-bg); border: 1px solid var(--danger-bd); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; }
-        .err-banner.show { display: block; }
-        .err-banner strong { color: var(--danger); font-size: 13px; }
-        .err-banner pre { margin-top: 8px; font-size: 11px; font-family: var(--mono); color: #7f1d1d; white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; }
+        .err { display: none; background: var(--danger-bg); border: 1px solid var(--danger-bd); border-radius: 10px; padding: 13px 17px; margin-bottom: 18px; }
+        .err.on { display: block; }
+        .err strong { color: var(--danger); font-size: 13px; }
+        .err pre { margin-top: 7px; font-size: 11px; font-family: var(--mono); color: #7f1d1d; white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; }
 
         /* ── RESULT CARD ── */
-        .rcard {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 22px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 18px rgba(0,0,0,0.03);
+        .rc {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 22px; margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.03);
         }
-        .rcard.err { border-color: var(--danger-bd); background: var(--danger-bg); }
+        .rc.ec { border-color: var(--danger-bd); background: var(--danger-bg); }
 
-        .rcard-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-        .rcard-head h3 { font-size: 15px; font-weight: 700; font-family: var(--mono); word-break: break-all; }
-        .rcard-head .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+        .rc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .rc-head h3 { font-size: 14px; font-weight: 700; font-family: var(--mono); word-break: break-all; }
+        .rc-head .rsub { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
 
-        .badge { padding: 4px 13px; border-radius: 20px; font-weight: 700; font-size: 11px; letter-spacing: 0.9px; text-transform: uppercase; white-space: nowrap; margin-left: 12px; flex-shrink: 0; font-family: var(--mono); }
-        .badge-pass  { background: var(--success-bg); color: #065f46; border: 1px solid var(--success-bd); }
-        .badge-fail  { background: var(--danger-bg);  color: #991b1b; border: 1px solid var(--danger-bd); }
-        .badge-error { background: var(--warn-bg);    color: #92400e; border: 1px solid #fde68a; }
+        .badge { padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-left: 10px; flex-shrink: 0; font-family: var(--mono); }
+        .bp { background: var(--success-bg); color: #065f46; border: 1px solid var(--success-bd); }
+        .bf { background: var(--danger-bg);  color: #991b1b; border: 1px solid var(--danger-bd); }
+        .be { background: var(--warn-bg);    color: #92400e; border: 1px solid var(--warn-bd); }
 
-        /* ── STATS GRID ── */
-        .sgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; margin-bottom: 20px; }
-        .sbox { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 13px 10px; text-align: center; }
-        .sbox.alert { background: var(--danger-bg); border-color: var(--danger-bd); }
-        .sbox.warn  { background: var(--warn-bg);   border-color: #fde68a; }
-        .sbox-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-bottom: 7px; font-family: var(--mono); }
-        .sbox-val { font-size: 17px; font-weight: 700; color: var(--text); font-family: var(--mono); line-height: 1.2; }
-        .sbox.alert .sbox-val { color: var(--danger); }
-        .sbox.warn  .sbox-val { color: var(--warn); }
+        /* ── STATS ── */
+        .sg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
+        .sb { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; text-align: center; }
+        .sb.al { background: var(--danger-bg); border-color: var(--danger-bd); }
+        .sb.wn { background: var(--warn-bg);   border-color: var(--warn-bd); }
+        .sl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; font-family: var(--mono); }
+        .sv { font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+        .sb.al .sv { color: var(--danger); }
+        .sb.wn .sv { color: var(--warn); }
 
-        /* ── SPEED FACTOR STRIP ── */
-        .speed-strip {
-            background: #f8faff;
-            border: 1px solid #dbeafe;
-            border-radius: 9px;
-            padding: 12px 16px;
-            margin-bottom: 18px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
+        /* ── FRAME RATE TABLE ── */
+        .fr-block {
+            background: #f8faff; border: 1px solid #dbeafe;
+            border-radius: 9px; padding: 12px 16px; margin-bottom: 16px;
         }
-        .speed-strip .sp-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); }
-        .speed-strip .sp-val { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--mono); }
-        .speed-strip .sp-action { font-size: 13px; color: var(--muted); flex: 1; text-align: right; }
+        .fr-title { font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 10px; }
+        .fr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .fr-cell { text-align: center; }
+        .fr-fps { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
+        .fr-val { font-size: 14px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+        .fr-unit { font-size: 9px; color: var(--muted); font-family: var(--mono); }
+        .fr-divider { width: 1px; background: #dbeafe; }
+
+        /* ── SPEED STRIP ── */
+        .sp-strip {
+            background: #f8faff; border: 1px solid #dbeafe;
+            border-radius: 9px; padding: 11px 16px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+        }
+        .sp-strip .sl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 4px; }
+        .sp-strip .sv { font-size: 15px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+        .sp-action { font-size: 12px; color: var(--muted); flex: 1; text-align: right; font-style: italic; }
 
         /* ── META TABLE ── */
-        .meta-wrap { overflow-x: auto; margin-bottom: 18px; }
+        .meta-wrap { overflow-x: auto; margin-bottom: 16px; }
         table.mt { width: 100%; border-collapse: collapse; font-size: 12px; }
-        table.mt th { text-align: left; padding: 8px 10px; background: var(--bg); color: var(--muted); font-weight: 700; font-size: 10px; letter-spacing: 0.9px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: var(--mono); }
-        table.mt td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: #334155; }
+        table.mt th { text-align: left; padding: 7px 10px; background: var(--bg); color: var(--muted); font-weight: 700; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+        table.mt td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: #334155; }
         table.mt tr.mm td { background: var(--warn-bg); color: #92400e; font-weight: 600; }
         table.mt tr:last-child td { border-bottom: none; }
 
         /* ── WAVEFORM ── */
-        .wave-box { width: 100%; height: 180px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #0c1525; }
+        .wave-wrap {
+            border-radius: 10px; overflow: hidden;
+            border: 1px solid var(--border);
+            background: #f8fafc;  /* light, clean */
+        }
+        .wave-box { width: 100%; height: 200px; }
+        .wave-legend {
+            display: flex; gap: 16px; align-items: center;
+            padding: 6px 14px; background: #f1f5f9;
+            border-top: 1px solid var(--border);
+        }
+        .wl-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
+        .wl-dot { width: 18px; height: 2px; border-radius: 1px; }
 
-        /* ── RESPONSIVE ── */
         @media (max-width: 720px) {
             .panel { flex-direction: column; align-items: stretch; }
-            .sgrid { grid-template-columns: repeat(2, 1fr); }
+            .sg { grid-template-columns: repeat(2, 1fr); }
+            .fr-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
 <div class="page">
 
-    <!-- Header -->
-    <div class="top-bar">
+    <!-- Top Bar -->
+    <div class="topbar">
         <div>
-            <div class="logo">🎧 Sync Engine <span>Pro</span><sub>v5</sub></div>
-            <div class="top-tagline">Temporal offset · Drift · Speed factor · Vocal DNA · True Peak · Phase</div>
+            <div class="logo">
+                🎧 Sync Engine <span class="accent">Pro</span>
+                <span class="ver">v6</span>
+            </div>
+            <div class="tagline">Temporal offset · Drift · Speed factor · Onset DNA · True Peak · Phase · Frame rates</div>
         </div>
         <button class="btn-ghost" onclick="wipeCache()">Clear Cache</button>
     </div>
@@ -238,44 +216,44 @@
     <!-- Control Panel -->
     <div class="panel">
         <div class="field">
-            <span class="field-label">Master Reference</span>
-            <div class="file-drop">
-                <div class="fname empty" id="refName">Choose master file…</div>
+            <span class="field-lbl">Master Reference</span>
+            <div class="drop">
+                <div class="fname ph" id="refName">Choose master file…</div>
                 <input type="file" id="refFile" accept="audio/*" onchange="onPick('refFile','refName',false)">
             </div>
         </div>
         <div class="field">
-            <span class="field-label">Dub Files</span>
-            <div class="file-drop">
-                <div class="fname empty" id="compName">Choose dub files…</div>
+            <span class="field-lbl">Dub Files</span>
+            <div class="drop">
+                <div class="fname ph" id="compName">Choose dub files…</div>
                 <input type="file" id="compFiles" multiple accept="audio/*" onchange="onPick('compFiles','compName',true)">
             </div>
         </div>
-        <div class="toggle-row">
+        <div class="tog">
             <input type="checkbox" id="vocalDna" checked>
             <label for="vocalDna">Vocal DNA Filter</label>
         </div>
-        <button class="btn-run" id="runBtn" onclick="runQC()">Run QC Engine</button>
+        <button class="btn-primary" id="runBtn" onclick="runQC()">Run QC Engine</button>
     </div>
 
     <!-- Summary Bar -->
-    <div class="summary-bar" id="sumBar">
-        <div class="sum-stat"><div class="val" id="sumTotal">—</div><div class="lbl">Processed</div></div>
-        <div class="sdiv"></div>
-        <div class="sum-stat ok"><div class="val" id="sumPass">—</div><div class="lbl">Passed</div></div>
-        <div class="sdiv"></div>
-        <div class="sum-stat bad"><div class="val" id="sumFail">—</div><div class="lbl">Failed / Error</div></div>
+    <div class="sum-bar" id="sumBar">
+        <div class="ss"><div class="v" id="sumTotal">—</div><div class="l">Processed</div></div>
+        <div class="sd"></div>
+        <div class="ss ok"><div class="v" id="sumPass">—</div><div class="l">Passed</div></div>
+        <div class="sd"></div>
+        <div class="ss bad"><div class="v" id="sumFail">—</div><div class="l">Failed / Error</div></div>
     </div>
 
     <!-- Loader -->
     <div id="loader">
         <div class="spin"></div>
-        <div class="load-msg" id="loadMsg">Running QC Engine…</div>
-        <div class="load-sub">Analyzing temporal DNA, drift &amp; levels. Large files may take a moment.</div>
+        <div class="lm" id="loadMsg">Running QC Engine…</div>
+        <div class="ls">Analyzing onset DNA, drift &amp; levels. Large files may take a moment.</div>
     </div>
 
     <!-- Error Banner -->
-    <div class="err-banner" id="errBanner">
+    <div class="err" id="errBanner">
         <strong>⚠ Analysis Failed</strong>
         <pre id="errDetail"></pre>
     </div>
@@ -284,46 +262,42 @@
     <div id="results"></div>
 
 </div>
-
 <script>
-    // ── File picker label update ──────────────────────────────────────────────
-    function onPick(inputId, labelId, multi) {
-        const files = document.getElementById(inputId).files;
-        const el    = document.getElementById(labelId);
-        if (!files.length) { el.textContent = 'Choose file…'; el.classList.add('empty'); return; }
-        el.classList.remove('empty');
-        el.textContent = (multi && files.length > 1) ? `${files.length} files selected` : files[0].name;
+    function onPick(iId, lId, multi) {
+        const f = document.getElementById(iId).files;
+        const el = document.getElementById(lId);
+        if (!f.length) { el.textContent = 'Choose file…'; el.classList.add('ph'); return; }
+        el.classList.remove('ph');
+        el.textContent = (multi && f.length > 1) ? `${f.length} files selected` : f[0].name;
     }
 
-    // ── Cache wipe ────────────────────────────────────────────────────────────
     async function wipeCache() {
         if (!confirm('Clear all session data from the server?')) return;
         await fetch('/wipe', { method: 'POST' });
         location.reload();
     }
 
-    // ── Loading state helpers ─────────────────────────────────────────────────
     function setLoading(on, msg = 'Running QC Engine…') {
-        document.getElementById('loader').classList.toggle('show', on);
+        document.getElementById('loader').classList.toggle('on', on);
         document.getElementById('loadMsg').textContent = msg;
         document.getElementById('runBtn').disabled = on;
-        document.getElementById('errBanner').classList.remove('show');
+        document.getElementById('errBanner').classList.remove('on');
     }
+
     function showError(detail) {
-        document.getElementById('errBanner').classList.add('show');
+        document.getElementById('errBanner').classList.add('on');
         document.getElementById('errDetail').textContent = detail;
         setLoading(false);
     }
 
-    // ── Run analysis ──────────────────────────────────────────────────────────
     async function runQC() {
         const ref   = document.getElementById('refFile').files[0];
         const comps = document.getElementById('compFiles').files;
-        if (!ref)         { alert('Please select a master reference file.'); return; }
-        if (!comps.length){ alert('Please select at least one dub file.');   return; }
+        if (!ref)          { alert('Please select a master reference file.'); return; }
+        if (!comps.length) { alert('Please select at least one dub file.'); return; }
 
         document.getElementById('results').innerHTML = '';
-        document.getElementById('sumBar').classList.remove('show');
+        document.getElementById('sumBar').classList.remove('on');
         setLoading(true, `Analyzing ${comps.length} file${comps.length > 1 ? 's' : ''}…`);
 
         const fd = new FormData();
@@ -342,89 +316,130 @@
         renderAll(data);
     }
 
-    // ── Render results ────────────────────────────────────────────────────────
     function renderAll(data) {
         const results = data.results || [];
         const passed  = results.filter(r => r.status === 'PASS').length;
-        const failed  = results.length - passed;
 
         document.getElementById('sumTotal').textContent = results.length;
         document.getElementById('sumPass').textContent  = passed;
-        document.getElementById('sumFail').textContent  = failed;
-        document.getElementById('sumBar').classList.add('show');
+        document.getElementById('sumFail').textContent  = results.length - passed;
+        document.getElementById('sumBar').classList.add('on');
 
         const container = document.getElementById('results');
         container.innerHTML = '';
-
         results.forEach((r, i) => renderCard(r, i, container));
     }
 
     function renderCard(r, i, container) {
         const div = document.createElement('div');
 
-        // Error card
         if (r.error) {
-            div.className = 'rcard err';
+            div.className = 'rc ec';
             div.innerHTML = `
-                <div class="rcard-head">
-                    <div><h3>${esc(r.filename)}</h3><div class="sub" style="color:var(--danger)">Processing failed</div></div>
-                    <span class="badge badge-error">ERROR</span>
+                <div class="rc-head">
+                    <div><h3>${x(r.filename)}</h3><div class="rsub" style="color:var(--danger)">Processing failed</div></div>
+                    <span class="badge be">ERROR</span>
                 </div>
-                <pre style="font-size:12px;color:#7f1d1d;white-space:pre-wrap;font-family:var(--mono)">${esc(r.reason)}</pre>`;
+                <pre style="font-size:12px;color:#7f1d1d;white-space:pre-wrap;font-family:var(--mono)">${x(r.reason)}</pre>`;
             container.appendChild(div);
             return;
         }
 
-        const isPass     = r.status === 'PASS';
-        const offAlert   = Math.abs(r.offset_ms)      > 80;
-        const driftAlert = Math.abs(r.total_drift_ms) > 150;
-        const dnaAlert   = r.dna_match < 55;
-        const sf         = r.speed_factor || {};
-        const lv         = r.levels || {};
-
-        // Speed factor styling
+        const isPass   = r.status === 'PASS';
+        const offAl    = Math.abs(r.offset_ms)      > 80;
+        const driftAl  = Math.abs(r.total_drift_ms) > 150;
+        const dnaAl    = r.dna_match < 55;
+        const sf       = r.speed_factor || {};
         const sfDelta  = parseFloat(sf.delta) || 0;
-        const sfClass  = Math.abs(sfDelta) > 0.005 ? 'warn' : '';
+        const sfClass  = Math.abs(sfDelta) > 0.005 ? 'wn' : '';
+        const lv       = r.levels || {};
+        const of       = r.offset_frames || {};
+        const df       = r.drift_frames  || {};
 
-        div.className = 'rcard';
+        div.className = 'rc';
         div.innerHTML = `
-            <div class="rcard-head">
+            <div class="rc-head">
                 <div>
-                    <h3>${esc(r.filename)}</h3>
-                    <div class="sub">${esc(r.reason)}</div>
+                    <h3>${x(r.filename)}</h3>
+                    <div class="rsub">${x(r.reason)}</div>
                 </div>
-                <span class="badge ${isPass ? 'badge-pass' : 'badge-fail'}">${r.status}</span>
+                <span class="badge ${isPass ? 'bp' : 'bf'}">${r.status}</span>
             </div>
 
-            <!-- 5-metric stats grid -->
-            <div class="sgrid">
-                <div class="sbox ${offAlert ? 'alert' : ''}">
-                    <div class="sbox-lbl">Start Offset</div>
-                    <div class="sbox-val">${r.offset_ms}ms</div>
+            <!-- 5 core metrics -->
+            <div class="sg">
+                <div class="sb ${offAl ? 'al' : ''}">
+                    <div class="sl">Start Offset</div>
+                    <div class="sv">${r.offset_ms}ms</div>
                 </div>
-                <div class="sbox ${driftAlert ? 'alert' : ''}">
-                    <div class="sbox-lbl">Total Drift</div>
-                    <div class="sbox-val">${r.total_drift_ms}ms</div>
+                <div class="sb ${driftAl ? 'al' : ''}">
+                    <div class="sl">Total Drift</div>
+                    <div class="sv">${r.total_drift_ms}ms</div>
                 </div>
-                <div class="sbox ${dnaAlert ? 'alert' : ''}">
-                    <div class="sbox-lbl">DNA Match</div>
-                    <div class="sbox-val">${r.dna_match}%</div>
+                <div class="sb ${dnaAl ? 'al' : ''}">
+                    <div class="sl">Onset DNA</div>
+                    <div class="sv">${r.dna_match}%</div>
                 </div>
-                <div class="sbox">
-                    <div class="sbox-lbl">Phase Health</div>
-                    <div class="sbox-val" style="font-size:13px">${esc(r.phase)}</div>
+                <div class="sb">
+                    <div class="sl">Phase Health</div>
+                    <div class="sv" style="font-size:12px">${x(r.phase)}</div>
                 </div>
-                <div class="sbox ${sfClass}">
-                    <div class="sbox-lbl">Speed Factor</div>
-                    <div class="sbox-val" style="font-size:14px">${esc(sf.display || 'N/A')}</div>
+                <div class="sb ${sfClass}">
+                    <div class="sl">Speed Factor</div>
+                    <div class="sv" style="font-size:13px">${x(sf.display || 'N/A')}</div>
                 </div>
             </div>
 
-            <!-- Speed factor detail strip -->
-            <div class="speed-strip">
-                <div><div class="sp-lbl">Clock Ratio</div><div class="sp-val">${esc(sf.display || 'N/A')}</div></div>
-                <div><div class="sp-lbl">Δ Speed</div><div class="sp-val">${esc(sf.delta || 'N/A')}</div></div>
-                <div class="sp-action">${esc(sf.action || '')}</div>
+            <!-- Frame Rate breakdown for Offset -->
+            <div class="fr-block">
+                <div class="fr-title">⏱ Offset in Frames &mdash; Start Offset: ${r.offset_ms}ms</div>
+                <div class="fr-grid">
+                    <div class="fr-cell">
+                        <div class="fr-fps">23.976 fps</div>
+                        <div class="fr-val">${of['23.976'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                    <div class="fr-divider"></div>
+                    <div class="fr-cell">
+                        <div class="fr-fps">25 fps (PAL)</div>
+                        <div class="fr-val">${of['25'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                    <div class="fr-divider"></div>
+                    <div class="fr-cell">
+                        <div class="fr-fps">29.97 fps (NTSC)</div>
+                        <div class="fr-val">${of['29.97'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                </div>
+                <!-- Drift in frames -->
+                <div class="fr-title" style="margin-top:12px">📉 Drift in Frames &mdash; Total Drift: ${r.total_drift_ms}ms</div>
+                <div class="fr-grid">
+                    <div class="fr-cell">
+                        <div class="fr-fps">23.976 fps</div>
+                        <div class="fr-val">${df['23.976'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                    <div class="fr-divider"></div>
+                    <div class="fr-cell">
+                        <div class="fr-fps">25 fps (PAL)</div>
+                        <div class="fr-val">${df['25'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                    <div class="fr-divider"></div>
+                    <div class="fr-cell">
+                        <div class="fr-fps">29.97 fps (NTSC)</div>
+                        <div class="fr-val">${df['29.97'] ?? '—'}</div>
+                        <div class="fr-unit">frames</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Speed factor detail -->
+            <div class="sp-strip">
+                <div><div class="sl">Clock Ratio</div><div class="sv">${x(sf.display || 'N/A')}</div></div>
+                <div><div class="sl">Δ Speed</div><div class="sv">${x(sf.delta || 'N/A')}</div></div>
+                <div class="sp-action">${x(sf.action || '')}</div>
             </div>
 
             <!-- Technical metadata -->
@@ -432,114 +447,142 @@
             <table class="mt">
                 <thead><tr><th>Property</th><th>Master Reference</th><th>Comparison Dub</th></tr></thead>
                 <tbody>
-                    <tr><td>Sample Rate</td><td>${esc(r.ref_meta.sr)}</td><td>${esc(r.comp_meta.sr)}</td></tr>
-                    <tr><td>Duration</td><td>${esc(r.ref_meta.duration)}</td><td>${esc(r.comp_meta.duration)}</td></tr>
+                    <tr><td>Sample Rate</td><td>${x(r.ref_meta.sr)}</td><td>${x(r.comp_meta.sr)}</td></tr>
+                    <tr><td>Duration</td><td>${x(r.ref_meta.duration)}</td><td>${x(r.comp_meta.duration)}</td></tr>
                     <tr class="${r.chan_mismatch ? 'mm' : ''}">
                         <td>Channels ${r.chan_mismatch ? '⚠' : ''}</td>
-                        <td>${esc(r.ref_meta.channel_label)}</td>
-                        <td>${esc(r.comp_meta.channel_label)}</td>
+                        <td>${x(r.ref_meta.channel_label)}</td>
+                        <td>${x(r.comp_meta.channel_label)}</td>
                     </tr>
-                    <tr><td>Bit Depth</td><td>${esc(r.ref_meta.bit_depth)}</td><td>${esc(r.comp_meta.bit_depth)}</td></tr>
-                    <tr><td>Integrated Loudness</td><td>—</td><td>${esc(lv.lufs)}</td></tr>
-                    <tr><td>Sample Peak</td><td>—</td><td>${esc(lv.peak)}</td></tr>
-                    <tr><td>True Peak (dBTP)</td><td>—</td><td>${esc(lv.true_peak)}</td></tr>
+                    <tr><td>Bit Depth / Format</td><td>${x(r.ref_meta.bit_depth)}</td><td>${x(r.comp_meta.bit_depth)}</td></tr>
+                    <tr><td>Integrated Loudness</td><td>—</td><td>${x(lv.lufs)}</td></tr>
+                    <tr><td>Sample Peak</td><td>—</td><td>${x(lv.peak)}</td></tr>
+                    <tr><td>True Peak (dBTP)</td><td>—</td><td>${x(lv.true_peak)}</td></tr>
                 </tbody>
             </table>
             </div>
 
-            <!-- ECharts waveform -->
-            <div class="wave-box" id="wave-${i}"></div>
+            <!-- Waveform -->
+            <div class="wave-wrap">
+                <div class="wave-box" id="wv-${i}"></div>
+                <div class="wave-legend">
+                    <div class="wl-item"><div class="wl-dot" style="background:#3b82f6"></div>Master (above axis)</div>
+                    <div class="wl-item"><div class="wl-dot" style="background:#f59e0b"></div>Dub (below axis, mirrored)</div>
+                </div>
+            </div>
         `;
-
         container.appendChild(div);
-        renderWave(i, r.wave_a, r.wave_r);
+        renderWave(i, r.wave_master, r.wave_dub);
     }
 
-    // ── ECharts waveform renderer ─────────────────────────────────────────────
-    function renderWave(i, waveA, waveR) {
-        const el = document.getElementById(`wave-${i}`);
-        if (!el || !waveA || !waveR) return;
+    /* ── ECharts mirrored dual-track waveform ── */
+    function renderWave(i, waveM, waveD) {
+        const el = document.getElementById(`wv-${i}`);
+        if (!el || !waveM || !waveD) return;
 
         const chart = echarts.init(el, null, { renderer: 'canvas' });
 
         chart.setOption({
-            backgroundColor: '#0c1525',
+            backgroundColor: '#f8fafc',
             animation: false,
-            grid: { top: 28, bottom: 22, left: 44, right: 16 },
-            legend: {
-                top: 4,
-                right: 10,
-                textStyle: { color: '#94a3b8', fontSize: 11, fontFamily: 'IBM Plex Mono' },
-                itemWidth: 14,
-                itemHeight: 2,
-                data: ['Master', 'Dub']
-            },
+            grid: { top: 14, bottom: 14, left: 42, right: 14 },
             xAxis: {
                 type: 'category',
-                show: true,
                 boundaryGap: false,
-                axisLine:   { lineStyle: { color: '#1e3a5f' } },
-                axisTick:   { show: false },
-                axisLabel:  { show: false },
-                splitLine:  { show: false }
+                show: true,
+                axisLine: { lineStyle: { color: '#e2e8f0' } },
+                axisTick: { show: false },
+                axisLabel: { show: false },
+                splitLine: { show: false }
             },
             yAxis: {
                 type: 'value',
-                min: -1.05,
-                max:  1.05,
-                axisLine:  { show: false },
-                axisTick:  { show: false },
-                axisLabel: { color: '#334155', fontSize: 10, fontFamily: 'IBM Plex Mono', formatter: v => v.toFixed(1) },
-                splitLine: { lineStyle: { color: '#1e2d45', type: 'dashed' } }
+                min: -1.1, max: 1.1,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: {
+                    color: '#94a3b8', fontSize: 9,
+                    fontFamily: 'IBM Plex Mono',
+                    formatter: v => v === 0 ? '0' : (v > 0 ? '+' + v.toFixed(1) : v.toFixed(1))
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: v => v === 0 ? '#cbd5e1' : '#f1f5f9',
+                        type: v => v === 0 ? 'solid' : 'dashed',
+                        width: v => v === 0 ? 1.5 : 1
+                    }
+                }
             },
             series: [
                 {
+                    /* Zero-axis reference line rendered as a markLine */
+                    name: 'Zero',
+                    type: 'line',
+                    data: Array(waveM.length).fill(0),
+                    symbol: 'none',
+                    lineStyle: { color: '#cbd5e1', width: 1 },
+                    z: 0
+                },
+                {
                     name: 'Master',
                     type: 'line',
-                    data: waveA,
+                    data: waveM,
                     symbol: 'none',
-                    lineStyle: { color: '#60a5fa', width: 1.2, opacity: 0.85 },
-                    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                        colorStops: [{ offset: 0, color: 'rgba(96,165,250,0.15)' }, { offset: 1, color: 'rgba(96,165,250,0)' }] }
+                    lineStyle: { color: '#3b82f6', width: 1.1, opacity: 0.9 },
+                    areaStyle: {
+                        color: {
+                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0,   color: 'rgba(59,130,246,0.25)' },
+                                { offset: 0.5, color: 'rgba(59,130,246,0.05)' }
+                            ]
+                        }
                     },
-                    large: true,
-                    largeThreshold: 400
+                    large: true, largeThreshold: 400, z: 2
                 },
                 {
                     name: 'Dub',
                     type: 'line',
-                    data: waveR,
+                    data: waveD,
                     symbol: 'none',
-                    lineStyle: { color: '#fbbf24', width: 1.2, opacity: 0.85 },
-                    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                        colorStops: [{ offset: 0, color: 'rgba(251,191,36,0.12)' }, { offset: 1, color: 'rgba(251,191,36,0)' }] }
+                    lineStyle: { color: '#f59e0b', width: 1.1, opacity: 0.9 },
+                    areaStyle: {
+                        color: {
+                            type: 'linear', x: 0, y: 1, x2: 0, y2: 0,
+                            colorStops: [
+                                { offset: 0,   color: 'rgba(245,158,11,0.25)' },
+                                { offset: 0.5, color: 'rgba(245,158,11,0.05)' }
+                            ]
+                        }
                     },
-                    large: true,
-                    largeThreshold: 400
+                    large: true, largeThreshold: 400, z: 2
                 }
             ],
             tooltip: {
                 trigger: 'axis',
-                backgroundColor: '#0f172a',
-                borderColor: '#1e3a5f',
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                padding: [8, 12],
                 textStyle: { color: '#cbd5e1', fontSize: 11, fontFamily: 'IBM Plex Mono' },
                 formatter: params => {
-                    const idx  = params[0]?.dataIndex ?? '';
-                    const a    = (params[0]?.value ?? 0).toFixed(3);
-                    const b    = (params[1]?.value ?? 0).toFixed(3);
-                    const diff = Math.abs((params[0]?.value ?? 0) - (params[1]?.value ?? 0)).toFixed(3);
-                    return `<b>Sample ${idx}</b><br/>Master: ${a}<br/>Dub: ${b}<br/>Δ: ${diff}`;
+                    // params[0]=Zero(skip), [1]=Master, [2]=Dub
+                    const m   = params[1]?.value ?? 0;
+                    const d   = -(params[2]?.value ?? 0);   // un-negate for display
+                    const idx = params[1]?.dataIndex ?? '';
+                    const diff = Math.abs(m - d).toFixed(3);
+                    return `<b>Sample ${idx}</b><br/>
+                            <span style="color:#60a5fa">Master: ${m.toFixed(3)}</span><br/>
+                            <span style="color:#fbbf24">Dub:    ${d.toFixed(3)}</span><br/>
+                            <span style="color:#94a3b8">Δ:      ${diff}</span>`;
                 }
             }
         });
 
-        // Responsive resize
         const ro = new ResizeObserver(() => chart.resize());
         ro.observe(el);
     }
 
-    // ── Escape HTML ───────────────────────────────────────────────────────────
-    function esc(s) {
+    function x(s) {
         if (s == null) return '—';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
