@@ -65,6 +65,39 @@ def butter_bandpass(data, lowcut, highcut, fs, order=2):
     return lfilter(b, a, data)
 
 
+def apply_vocal_filter(y: np.ndarray) -> np.ndarray:
+    """
+    Vocal DNA Filter — two-stage processing for dub QC analysis:
+
+    Stage 1 — HPSS (Harmonic-Percussive Source Separation):
+        Isolates the PERCUSSIVE layer (transients, onsets, consonants).
+        This is what onset-based DNA scoring actually measures — the
+        temporal structure of events, not their harmonic content.
+        Discarding harmonics removes sustained notes that differ between
+        languages (e.g. vowel melody in English vs Spanish) while keeping
+        the rhythmic fingerprint that both dubs share.
+
+    Stage 2 — Bandpass 300–3400 Hz:
+        Applied AFTER HPSS to remove sub-bass rumble and high-freq noise
+        that survived separation. 300–3400 Hz is the ITU-T G.712 speech
+        clarity band — the range where consonant onsets have peak energy.
+
+    WITHOUT this filter: onset_strength sees the full mix including music
+    beds and background elements that may differ between master and dub.
+    WITH this filter: onset_strength sees primarily speech transients and
+    foley hits — the true structural fingerprint of the content.
+
+    NOTE: this filtered signal is used ONLY for analysis (offset + DNA).
+    The waveform display always uses the unfiltered, normalised signal.
+    """
+    # Stage 1: separate percussive layer
+    _, y_perc = librosa.effects.hpss(y)
+    # Stage 2: bandpass to speech clarity band
+    nyq  = 0.5 * PERFORMANCE_SR
+    b, a = butter(2, [300 / nyq, 3400 / nyq], btype='band')
+    return lfilter(b, a, y_perc)
+
+
 def normalize_lufs(y, sr, target=-23.0):
     meter = pyln.Meter(sr)
     try:
@@ -293,7 +326,12 @@ def determine_status(offset_ms, drift_ms, dna_score):
 
 
 # ── PER-FILE WORKER ────────────────────────────────────────────────────────────
-def process_file(f, root, y_ref_s, y_ref_e, ref_meta, vocal_logic):
+def process_file(f, root, y_ref_s_an, y_ref_e_an, y_ref_s_raw,
+                 ref_meta, vocal_logic):
+    """
+    y_ref_s_an / y_ref_e_an : analysis arrays (filtered when vocal_logic=True)
+    y_ref_s_raw             : raw unfiltered master start — used only for waveform display
+    """
     if not f or not f.filename:
         return None
 
@@ -311,14 +349,19 @@ def process_file(f, root, y_ref_s, y_ref_e, ref_meta, vocal_logic):
         y_c_e, _ = load_segment(f_path, PERFORMANCE_SR,
                                 offset=max(0.0, comp_dur - SEGMENT_DURATION))
 
-        if vocal_logic:
-            y_c_s = butter_bandpass(normalize_lufs(y_c_s, PERFORMANCE_SR),
-                                    300, 3400, PERFORMANCE_SR)
-            y_c_e = butter_bandpass(normalize_lufs(y_c_e, PERFORMANCE_SR),
-                                    300, 3400, PERFORMANCE_SR)
+        # Save raw dub for waveform display before any filtering
+        y_c_s_raw = y_c_s.copy()
 
-        s_off, dna = analyze_segment(y_ref_s, y_c_s, PERFORMANCE_SR)
-        e_off, _   = analyze_segment(y_ref_e, y_c_e, PERFORMANCE_SR)
+        # Apply the same filtering pipeline to dub that was applied to ref
+        if vocal_logic:
+            y_c_s_an = apply_vocal_filter(normalize_lufs(y_c_s, PERFORMANCE_SR))
+            y_c_e_an = apply_vocal_filter(normalize_lufs(y_c_e, PERFORMANCE_SR))
+        else:
+            y_c_s_an = y_c_s
+            y_c_e_an = y_c_e
+
+        s_off, dna = analyze_segment(y_ref_s_an, y_c_s_an, PERFORMANCE_SR)
+        e_off, _   = analyze_segment(y_ref_e_an, y_c_e_an, PERFORMANCE_SR)
         drift      = round(e_off - s_off, 2)
 
         speed          = calculate_speed_factor(s_off, e_off, comp_dur)
@@ -330,22 +373,22 @@ def process_file(f, root, y_ref_s, y_ref_e, ref_meta, vocal_logic):
             "reason":         reason,
             "offset_ms":      s_off,
             "total_drift_ms": drift,
-            # Frame-rate breakdown for offset and drift
             "offset_frames":  ms_to_frames(s_off),
             "drift_frames":   ms_to_frames(drift),
             "dna_match":      dna,
+            "vocal_filter":   vocal_logic,   # pass through so UI can label it
             "speed_factor":   speed,
             "phase":          calculate_phase(f_path),
             "levels":         scan_levels(f_path),
             "ref_meta":       ref_meta,
             "comp_meta":      comp_meta,
-            # Mirrored waveform: master positive, dub negated for dual-track view
-            "wave_master":    downsample_waveform(normalize_visual(y_ref_s)),
-            "wave_dub":       downsample_waveform(-normalize_visual(y_c_s)),   # negated
+            # Waveform uses RAW audio so chart always reflects true signal shape
+            "wave_master":    downsample_waveform(normalize_visual(y_ref_s_raw)),
+            "wave_dub":       downsample_waveform(-normalize_visual(y_c_s_raw)),
             "chan_mismatch":  ref_meta["channels"] != comp_meta["channels"],
         }
 
-        del y_c_s, y_c_e
+        del y_c_s, y_c_e, y_c_s_raw, y_c_s_an, y_c_e_an
         gc.collect()
         return result
 
@@ -400,17 +443,23 @@ def upload():
         y_ref_e, _ = load_segment(ref_path, PERFORMANCE_SR,
                                   offset=max(0.0, total_dur - SEGMENT_DURATION))
 
+        # Always keep raw copy for waveform display (chart shows real audio, not filtered)
+        y_ref_s_raw = y_ref_s.copy()
+
+        # Build analysis copies: HPSS + bandpass when vocal filter on, raw otherwise
         if vocal_logic:
-            y_ref_s = butter_bandpass(normalize_lufs(y_ref_s, PERFORMANCE_SR),
-                                      300, 3400, PERFORMANCE_SR)
-            y_ref_e = butter_bandpass(normalize_lufs(y_ref_e, PERFORMANCE_SR),
-                                      300, 3400, PERFORMANCE_SR)
+            y_ref_s_an = apply_vocal_filter(normalize_lufs(y_ref_s, PERFORMANCE_SR))
+            y_ref_e_an = apply_vocal_filter(normalize_lufs(y_ref_e, PERFORMANCE_SR))
+        else:
+            y_ref_s_an = y_ref_s
+            y_ref_e_an = y_ref_e
 
         results_map = {}
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
             futures = {
                 pool.submit(process_file, f, root,
-                            y_ref_s, y_ref_e, ref_meta, vocal_logic): i
+                            y_ref_s_an, y_ref_e_an, y_ref_s_raw,
+                            ref_meta, vocal_logic): i
                 for i, f in enumerate(comps)
             }
             for future in as_completed(futures):
@@ -420,7 +469,7 @@ def upload():
 
         results = [results_map[i] for i in sorted(results_map)]
 
-        del y_ref_s, y_ref_e
+        del y_ref_s, y_ref_e, y_ref_s_raw, y_ref_s_an, y_ref_e_an
         gc.collect()
 
         return jsonify({"results": results})
