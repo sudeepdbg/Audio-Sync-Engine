@@ -10,53 +10,63 @@
         * { box-sizing: border-box; margin: 0; font-family: 'Inter', sans-serif; }
         body { background: var(--bg); color: var(--text); padding: 40px; }
         .container { max-width: 1100px; margin: 0 auto; }
-        .header { margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
-        .config-card { background: var(--card); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .summary-card { display:none; background:white; padding:15px; border-radius:12px; margin-bottom:20px; border-left:8px solid var(--brand); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .result-card { background: var(--card); border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #e2e8f0; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .config-card { background: var(--card); border-radius: 12px; padding: 24px; display: flex; align-items: center; gap: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .summary-card { display:none; background:white; padding:20px; border-radius:12px; margin-bottom:20px; border-left:8px solid var(--brand); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .result-card { background: var(--card); border-radius: 16px; padding: 24px; margin-bottom: 32px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; }
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
-        .stat-box { background: #f1f5f9; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-box { background: #f1f5f9; padding: 15px; border-radius: 8px; text-align: center; }
         .stat-val { display: block; font-size: 18px; font-weight: 700; color: var(--brand); }
-        .stat-label { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 800; }
+        .stat-label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 800; }
         .meta-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; }
-        .meta-table th { text-align: left; background: #f8fafc; color: #64748b; padding: 8px; border: 1px solid #e2e8f0; }
-        .meta-table td { padding: 8px; border: 1px solid #e2e8f0; }
-        .status-badge { position: absolute; top: 20px; right: 20px; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; }
+        .meta-table th, .meta-table td { border: 1px solid #e2e8f0; padding: 10px; }
         .mismatch { background: #fee2e2; color: #b91c1c; font-weight: 800; }
-        .chart-container { height: 300px; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 15px; }
+        .status-badge { position: absolute; top: 20px; right: 20px; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; }
+        .chart-container { height: 350px; width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 15px; }
+        .btn-wipe { background: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header"><h1>🎧 Sync Engine Pro</h1></div>
-        
+        <div class="header">
+            <div><h1>🎧 Sync Engine Pro</h1></div>
+            <button class="btn-wipe" onclick="wipeCache()">Clear System Cache</button>
+        </div>
+
         <div class="config-card">
-            <div style="flex:1"><label style="font-size:11px; font-weight:800;">MASTER</label><input type="file" id="refFile"></div>
-            <div style="flex:1"><label style="font-size:11px; font-weight:800;">DUBS</label><input type="file" id="compFiles" multiple></div>
-            <div><input type="checkbox" id="vocalLogic" checked><label style="font-size:13px; margin-left:5px">Vocal Filter</label></div>
-            <button onclick="runAnalysis()" style="background:var(--brand); color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer">Run QC</button>
+            <div style="flex:1"><label style="font-size:11px; font-weight:800;">MASTER REFERENCE</label><input type="file" id="refFile"></div>
+            <div style="flex:1"><label style="font-size:11px; font-weight:800;">DUB FILES</label><input type="file" id="compFiles" multiple></div>
+            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="vocalLogic" checked><label style="font-size:13px; font-weight:600">Vocal DNA Filter</label></div>
+            <button onclick="runAnalysis()" style="background:var(--brand); color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:600; cursor:pointer;">Run QC Engine</button>
         </div>
 
         <div id="summaryCard" class="summary-card">
-            <h3 style="margin:0">QC Executive Summary</h3>
-            <div id="summaryContent" style="display:flex; gap:30px; margin-top:10px; font-size:14px;"></div>
+            <h2 style="margin:0; font-size:18px;">QC Executive Summary</h2>
+            <div id="summaryContent" style="display:flex; gap:40px; margin-top:10px;"></div>
         </div>
 
         <div id="resultsList"></div>
     </div>
 
     <script>
+        async function wipeCache() {
+            if(confirm("Permanently clear all session data?")) {
+                await fetch('/wipe', {method:'POST'});
+                location.reload();
+            }
+        }
+
         async function runAnalysis() {
             const ref = document.getElementById('refFile').files[0];
             const comps = document.getElementById('compFiles').files;
-            if(!ref || comps.length === 0) return alert("Select files.");
+            if(!ref || comps.length === 0) return alert("Please select Master and Dub files.");
 
             const fd = new FormData();
             fd.append('reference', ref);
             for (let f of comps) fd.append('comparison[]', f);
             fd.append('vocal_logic', document.getElementById('vocalLogic').checked);
 
-            document.getElementById('resultsList').innerHTML = 'Processing...';
+            document.getElementById('resultsList').innerHTML = '<p style="text-align:center; padding:50px;">Analyzing Temporal DNA & Drift...</p>';
 
             const res = await fetch('/upload', { method: 'POST', body: fd });
             const data = await res.json();
@@ -84,24 +94,25 @@
                     <h3 style="margin:0">${r.filename}</h3>
                     <div class="stats-grid">
                         <div class="stat-box"><span class="stat-label">Start Offset</span><span class="stat-val">${r.offset_ms}ms</span></div>
-                        <div class="stat-box"><span class="stat-label">Total Drift</span><span class="stat-val">${r.total_drift_ms}ms</span></div>
+                        <div class="stat-box" style="background:${Math.abs(r.total_drift_ms) > 100 ? '#fee2e2' : '#f1f5f9'}"><span class="stat-label">Total Drift</span><span class="stat-val">${r.total_drift_ms}ms</span></div>
                         <div class="stat-box"><span class="stat-label">DNA Match</span><span class="stat-val">${r.dna_match}%</span></div>
                         <div class="stat-box"><span class="stat-label">Phase Health</span><span class="stat-val">${r.phase}</span></div>
                     </div>
                     <table class="meta-table">
-                        <tr><th>Property</th><th>Master Reference</th><th>Comparison Dub</th></tr>
+                        <tr><th>Technical Property</th><th>Master Reference</th><th>Comparison Dub</th></tr>
                         <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
                         <tr><td>Duration</td><td>${r.ref_meta.duration}</td><td>${r.comp_meta.duration}</td></tr>
                         <tr class="${r.chan_mismatch ? 'mismatch' : ''}"><td>Channels</td><td>${r.ref_meta.channel_label}</td><td>${r.comp_meta.channel_label}</td></tr>
-                        <tr><td>Loudness</td><td>-</td><td>${r.levels.lufs}</td></tr>
+                        <tr><td>Loudness / Peak</td><td>-</td><td>${r.levels.lufs} / ${r.levels.peak}</td></tr>
                     </table>
                     <div id="chart-${i}" class="chart-container"></div>
                 `;
                 container.appendChild(div);
+
                 Plotly.newPlot(`chart-${i}`, [
-                    { y: r.wave_a, name: 'Master', line: {color:'#3b82f6', width:1}, opacity:0.6 },
-                    { y: r.wave_r, name: 'Dub', line: {color:'#f59e0b', width:1}, opacity:0.8 }
-                ], { margin: { t: 30, b: 30, l: 40, r: 20 }, legend: { orientation: 'h', y: 1.2 } });
+                    { y: r.wave_a, name: 'Master (Start)', line: {color:'#3b82f6', width:1}, opacity:0.5 },
+                    { y: r.wave_r, name: 'Dub (Start)', line: {color:'#f59e0b', width:1}, opacity:0.8 }
+                ], { margin: { t: 40, b: 30, l: 40, r: 20 }, legend: { orientation: 'h', y: 1.15 } });
             });
         }
     </script>
