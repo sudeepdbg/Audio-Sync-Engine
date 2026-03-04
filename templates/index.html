@@ -8,7 +8,7 @@
     <style>
         :root {
             --brand:      #2f6ef5;
-            --brand-dim:  rgba(47,110,245,0.08);
+            --brand-dim:  rgba(47,110,245,0.07);
             --bg:         #eef1f7;
             --card:       #ffffff;
             --text:       #0d1526;
@@ -30,43 +30,26 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 14px; }
         body { font-family: var(--sans); background: var(--bg); color: var(--text); padding: 32px 24px; min-height: 100vh; }
-        .page { max-width: 1140px; margin: 0 auto; }
+        .page { max-width: 1100px; margin: 0 auto; }
 
         /* ── TOP BAR ── */
-        .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 26px; }
-        .logo { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: baseline; gap: 6px; }
+        .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+        .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: baseline; gap: 6px; }
         .logo .accent { color: var(--brand); }
         .logo .ver { font-size: 10px; font-weight: 500; color: var(--muted); font-family: var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
-        .tagline { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); letter-spacing: 0.2px; }
+        .tagline { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
 
         /* ── PANEL ── */
         .panel {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 18px 22px;
-            display: flex;
-            align-items: flex-end;
-            gap: 16px;
-            margin-bottom: 22px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            flex-wrap: wrap;
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 18px 22px; display: flex; align-items: flex-end; gap: 14px;
+            margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap;
         }
         .field { flex: 1; min-width: 200px; }
-        .field-lbl {
-            display: block; font-size: 9px; font-weight: 700;
-            letter-spacing: 1.5px; text-transform: uppercase;
-            color: var(--muted); margin-bottom: 6px; font-family: var(--mono);
-        }
-        .drop {
-            position: relative;
-            border: 1.5px dashed var(--border);
-            border-radius: 8px; padding: 9px 13px; cursor: pointer;
-            background: var(--bg); transition: border-color .15s, background .15s;
-            overflow: hidden;
-        }
+        .field-lbl { display: block; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+        .drop { position: relative; border: 1.5px dashed var(--border); border-radius: 8px; padding: 9px 13px; cursor: pointer; background: var(--bg); transition: border-color .15s, background .15s; overflow: hidden; }
         .drop:hover { border-color: var(--brand); background: var(--brand-dim); }
-        .drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
         .drop .fname { font-size: 12px; font-family: var(--mono); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .drop .fname.ph { color: var(--muted); }
 
@@ -74,29 +57,14 @@
         .tog label { font-size: 13px; font-weight: 600; cursor: pointer; }
         input[type=checkbox] { accent-color: var(--brand); width: 15px; height: 15px; cursor: pointer; }
 
-        .btn-primary {
-            background: var(--brand); color: #fff; border: none;
-            padding: 10px 24px; border-radius: 8px; font-family: var(--sans);
-            font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap;
-            transition: opacity .15s, transform .1s;
-        }
+        .btn-primary { background: var(--brand); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-family: var(--sans); font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; transition: opacity .15s, transform .1s; }
         .btn-primary:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
         .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
-        .btn-ghost {
-            background: none; color: var(--muted); border: 1px solid var(--border);
-            padding: 8px 15px; border-radius: 8px; font-family: var(--sans);
-            font-size: 12px; font-weight: 600; cursor: pointer;
-            transition: color .18s, border-color .18s;
-        }
+        .btn-ghost { background: none; color: var(--muted); border: 1px solid var(--border); padding: 8px 15px; border-radius: 8px; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: color .18s, border-color .18s; }
         .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
 
         /* ── SUMMARY BAR ── */
-        .sum-bar {
-            display: none; background: var(--card); border: 1px solid var(--border);
-            border-radius: 12px; padding: 13px 20px; margin-bottom: 20px;
-            gap: 24px; align-items: center;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-        }
+        .sum-bar { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 20px; margin-bottom: 20px; gap: 24px; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
         .sum-bar.on { display: flex; }
         .ss .v { font-size: 22px; font-weight: 700; font-family: var(--mono); line-height: 1; }
         .ss .l { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-top: 2px; font-family: var(--mono); }
@@ -112,20 +80,15 @@
         #loader .lm { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
         #loader .ls { font-size: 12px; color: var(--muted); }
 
-        /* ── ERROR BANNER ── */
+        /* ── ERROR ── */
         .err { display: none; background: var(--danger-bg); border: 1px solid var(--danger-bd); border-radius: 10px; padding: 13px 17px; margin-bottom: 18px; }
         .err.on { display: block; }
         .err strong { color: var(--danger); font-size: 13px; }
         .err pre { margin-top: 7px; font-size: 11px; font-family: var(--mono); color: #7f1d1d; white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; }
 
         /* ── RESULT CARD ── */
-        .rc {
-            background: var(--card); border: 1px solid var(--border);
-            border-radius: 16px; padding: 22px; margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.03);
-        }
+        .rc { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.03); }
         .rc.ec { border-color: var(--danger-bd); background: var(--danger-bg); }
-
         .rc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
         .rc-head h3 { font-size: 14px; font-weight: 700; font-family: var(--mono); word-break: break-all; }
         .rc-head .rsub { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
@@ -135,79 +98,67 @@
         .bf { background: var(--danger-bg);  color: #991b1b; border: 1px solid var(--danger-bd); }
         .be { background: var(--warn-bg);    color: #92400e; border: 1px solid var(--warn-bd); }
 
-        /* ── STATS ── */
-        .sg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
-        .sb { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; text-align: center; }
+        /* ── 5-METRIC GRID ── */
+        .sg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+        .sb { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
         .sb.al { background: var(--danger-bg); border-color: var(--danger-bd); }
         .sb.wn { background: var(--warn-bg);   border-color: var(--warn-bd); }
-        .sl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; font-family: var(--mono); }
-        .sv { font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
-        .sb.al .sv { color: var(--danger); }
-        .sb.wn .sv { color: var(--warn); }
+        .sb-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; margin-bottom: 7px; font-family: var(--mono); }
+        .sb-val { font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+        .sb.al .sb-val { color: var(--danger); }
+        .sb.wn .sb-val { color: var(--warn); }
 
-        /* ── FRAME RATE TABLE ── */
-        .fr-block {
-            background: #f8faff; border: 1px solid #dbeafe;
-            border-radius: 9px; padding: 12px 16px; margin-bottom: 16px;
+        /* ── INFO STRIPS (frame rates + speed) ── */
+        .info-strip {
+            background: #f5f8ff; border: 1px solid #dbeafe;
+            border-radius: 10px; padding: 13px 16px; margin-bottom: 13px;
         }
-        .fr-title { font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 10px; }
-        .fr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .fr-cell { text-align: center; }
-        .fr-fps { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
-        .fr-val { font-size: 14px; font-weight: 700; font-family: var(--mono); color: var(--text); }
-        .fr-unit { font-size: 9px; color: var(--muted); font-family: var(--mono); }
-        .fr-divider { width: 1px; background: #dbeafe; }
+        .strip-title { font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 11px; }
 
-        /* ── SPEED STRIP ── */
-        .sp-strip {
-            background: #f8faff; border: 1px solid #dbeafe;
-            border-radius: 9px; padding: 11px 16px; margin-bottom: 16px;
-            display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
-        }
-        .sp-strip .sl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 4px; }
-        .sp-strip .sv { font-size: 15px; font-weight: 700; font-family: var(--mono); color: var(--text); }
-        .sp-action { font-size: 12px; color: var(--muted); flex: 1; text-align: right; font-style: italic; }
+        /* Frame rate table — proper table, no grid hacks */
+        table.fr { width: 100%; border-collapse: collapse; }
+        table.fr th { font-size: 9px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-family: var(--mono); padding: 0 0 8px 0; text-align: center; border-bottom: 1px solid #dbeafe; }
+        table.fr th:first-child { text-align: left; }
+        table.fr td { font-size: 13px; font-weight: 700; font-family: var(--mono); color: var(--text); padding: 9px 0 0 0; text-align: center; }
+        table.fr td:first-child { font-size: 11px; font-weight: 500; color: var(--muted); text-align: left; }
+        table.fr td.al { color: var(--danger); }
+        table.fr .unit { font-size: 9px; color: var(--muted); font-weight: 400; }
+
+        /* Speed strip */
+        .speed-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+        .speed-cell .slbl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); margin-bottom: 4px; }
+        .speed-cell .sval { font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+        .speed-action { flex: 1; text-align: right; font-size: 12px; color: var(--muted); font-style: italic; }
 
         /* ── META TABLE ── */
-        .meta-wrap { overflow-x: auto; margin-bottom: 16px; }
-        table.mt { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .meta-wrap { overflow-x: auto; margin-bottom: 14px; }
+        table.mt { width: 100%; border-collapse: collapse; }
         table.mt th { text-align: left; padding: 7px 10px; background: var(--bg); color: var(--muted); font-weight: 700; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: var(--mono); }
         table.mt td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: #334155; }
         table.mt tr.mm td { background: var(--warn-bg); color: #92400e; font-weight: 600; }
         table.mt tr:last-child td { border-bottom: none; }
 
         /* ── WAVEFORM ── */
-        .wave-wrap {
-            border-radius: 10px; overflow: hidden;
-            border: 1px solid var(--border);
-            background: #f8fafc;  /* light, clean */
-        }
-        .wave-box { width: 100%; height: 200px; }
-        .wave-legend {
-            display: flex; gap: 16px; align-items: center;
-            padding: 6px 14px; background: #f1f5f9;
-            border-top: 1px solid var(--border);
-        }
-        .wl-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
-        .wl-dot { width: 18px; height: 2px; border-radius: 1px; }
+        .wave-wrap { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+        .wave-box  { width: 100%; height: 210px; background: #f8fafc; }
+        .wave-foot { display: flex; gap: 20px; align-items: center; padding: 7px 14px; background: #f1f5f9; border-top: 1px solid var(--border); }
+        .wl { display: flex; align-items: center; gap: 7px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
+        .wd { width: 20px; height: 2px; border-radius: 1px; }
+        .wave-note { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-left: auto; font-style: italic; }
 
         @media (max-width: 720px) {
             .panel { flex-direction: column; align-items: stretch; }
             .sg { grid-template-columns: repeat(2, 1fr); }
-            .fr-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
 <div class="page">
 
-    <!-- Top Bar -->
+    <!-- Top bar -->
     <div class="topbar">
         <div>
-            <div class="logo">
-                🎧 Sync Engine <span class="accent">Pro</span>
-                <span class="ver">v6</span>
-            </div>
+            <div class="logo">🎧 Sync Engine <span class="accent">Pro</span> <span class="ver">v6</span></div>
             <div class="tagline">Temporal offset · Drift · Speed factor · Onset DNA · True Peak · Phase · Frame rates</div>
         </div>
         <button class="btn-ghost" onclick="wipeCache()">Clear Cache</button>
@@ -236,7 +187,7 @@
         <button class="btn-primary" id="runBtn" onclick="runQC()">Run QC Engine</button>
     </div>
 
-    <!-- Summary Bar -->
+    <!-- Summary bar -->
     <div class="sum-bar" id="sumBar">
         <div class="ss"><div class="v" id="sumTotal">—</div><div class="l">Processed</div></div>
         <div class="sd"></div>
@@ -252,7 +203,7 @@
         <div class="ls">Analyzing onset DNA, drift &amp; levels. Large files may take a moment.</div>
     </div>
 
-    <!-- Error Banner -->
+    <!-- Error banner -->
     <div class="err" id="errBanner">
         <strong>⚠ Analysis Failed</strong>
         <pre id="errDetail"></pre>
@@ -260,8 +211,8 @@
 
     <!-- Results -->
     <div id="results"></div>
-
 </div>
+
 <script>
     function onPick(iId, lId, multi) {
         const f = document.getElementById(iId).files;
@@ -319,12 +270,10 @@
     function renderAll(data) {
         const results = data.results || [];
         const passed  = results.filter(r => r.status === 'PASS').length;
-
         document.getElementById('sumTotal').textContent = results.length;
         document.getElementById('sumPass').textContent  = passed;
         document.getElementById('sumFail').textContent  = results.length - passed;
         document.getElementById('sumBar').classList.add('on');
-
         const container = document.getElementById('results');
         container.innerHTML = '';
         results.forEach((r, i) => renderCard(r, i, container));
@@ -345,16 +294,23 @@
             return;
         }
 
-        const isPass   = r.status === 'PASS';
-        const offAl    = Math.abs(r.offset_ms)      > 80;
-        const driftAl  = Math.abs(r.total_drift_ms) > 150;
-        const dnaAl    = r.dna_match < 55;
-        const sf       = r.speed_factor || {};
-        const sfDelta  = parseFloat(sf.delta) || 0;
-        const sfClass  = Math.abs(sfDelta) > 0.005 ? 'wn' : '';
-        const lv       = r.levels || {};
-        const of       = r.offset_frames || {};
-        const df       = r.drift_frames  || {};
+        const isPass  = r.status === 'PASS';
+        const offAl   = Math.abs(r.offset_ms)      > 80;
+        const driftAl = Math.abs(r.total_drift_ms) > 150;
+        const dnaAl   = r.dna_match < 55;
+        const sf      = r.speed_factor  || {};
+        const lv      = r.levels        || {};
+        const of      = r.offset_frames || {};
+        const df      = r.drift_frames  || {};
+
+        const sfDelta = parseFloat(sf.delta) || 0;
+        const sfClass = Math.abs(sfDelta) > 0.005 ? 'wn' : '';
+
+        // Frame value helper — highlight if large
+        const fv = (val, threshold) => {
+            const n = Math.abs(parseFloat(val) || 0);
+            return `<span class="${n > threshold ? 'al' : ''}">${val ?? '—'}</span>`;
+        };
 
         div.className = 'rc';
         div.innerHTML = `
@@ -369,127 +325,133 @@
             <!-- 5 core metrics -->
             <div class="sg">
                 <div class="sb ${offAl ? 'al' : ''}">
-                    <div class="sl">Start Offset</div>
-                    <div class="sv">${r.offset_ms}ms</div>
+                    <div class="sb-lbl">Start Offset</div>
+                    <div class="sb-val">${r.offset_ms}ms</div>
                 </div>
                 <div class="sb ${driftAl ? 'al' : ''}">
-                    <div class="sl">Total Drift</div>
-                    <div class="sv">${r.total_drift_ms}ms</div>
+                    <div class="sb-lbl">Total Drift</div>
+                    <div class="sb-val">${r.total_drift_ms}ms</div>
                 </div>
                 <div class="sb ${dnaAl ? 'al' : ''}">
-                    <div class="sl">Onset DNA</div>
-                    <div class="sv">${r.dna_match}%</div>
+                    <div class="sb-lbl">Onset DNA</div>
+                    <div class="sb-val">${r.dna_match}%</div>
                 </div>
                 <div class="sb">
-                    <div class="sl">Phase Health</div>
-                    <div class="sv" style="font-size:12px">${x(r.phase)}</div>
+                    <div class="sb-lbl">Phase Health</div>
+                    <div class="sb-val" style="font-size:12px">${x(r.phase)}</div>
                 </div>
                 <div class="sb ${sfClass}">
-                    <div class="sl">Speed Factor</div>
-                    <div class="sv" style="font-size:13px">${x(sf.display || 'N/A')}</div>
+                    <div class="sb-lbl">Speed Factor</div>
+                    <div class="sb-val" style="font-size:13px">${x(sf.display || 'N/A')}</div>
                 </div>
             </div>
 
-            <!-- Frame Rate breakdown for Offset -->
-            <div class="fr-block">
-                <div class="fr-title">⏱ Offset in Frames &mdash; Start Offset: ${r.offset_ms}ms</div>
-                <div class="fr-grid">
-                    <div class="fr-cell">
-                        <div class="fr-fps">23.976 fps</div>
-                        <div class="fr-val">${of['23.976'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                    <div class="fr-divider"></div>
-                    <div class="fr-cell">
-                        <div class="fr-fps">25 fps (PAL)</div>
-                        <div class="fr-val">${of['25'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                    <div class="fr-divider"></div>
-                    <div class="fr-cell">
-                        <div class="fr-fps">29.97 fps (NTSC)</div>
-                        <div class="fr-val">${of['29.97'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                </div>
-                <!-- Drift in frames -->
-                <div class="fr-title" style="margin-top:12px">📉 Drift in Frames &mdash; Total Drift: ${r.total_drift_ms}ms</div>
-                <div class="fr-grid">
-                    <div class="fr-cell">
-                        <div class="fr-fps">23.976 fps</div>
-                        <div class="fr-val">${df['23.976'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                    <div class="fr-divider"></div>
-                    <div class="fr-cell">
-                        <div class="fr-fps">25 fps (PAL)</div>
-                        <div class="fr-val">${df['25'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                    <div class="fr-divider"></div>
-                    <div class="fr-cell">
-                        <div class="fr-fps">29.97 fps (NTSC)</div>
-                        <div class="fr-val">${df['29.97'] ?? '—'}</div>
-                        <div class="fr-unit">frames</div>
-                    </div>
-                </div>
+            <!-- Frame rate table -->
+            <div class="info-strip">
+                <div class="strip-title">⏱ Timing in Frames</div>
+                <table class="fr">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>23.976 fps<br><span class="unit">Film / Netflix</span></th>
+                            <th>25 fps<br><span class="unit">PAL / EBU</span></th>
+                            <th>29.97 fps<br><span class="unit">NTSC</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Start Offset<br><span class="unit">${r.offset_ms}ms</span></td>
+                            <td>${fv(of['23.976'], 2)} <span class="unit">fr</span></td>
+                            <td>${fv(of['25'],     2)} <span class="unit">fr</span></td>
+                            <td>${fv(of['29.97'],  2)} <span class="unit">fr</span></td>
+                        </tr>
+                        <tr>
+                            <td>Total Drift<br><span class="unit">${r.total_drift_ms}ms</span></td>
+                            <td>${fv(df['23.976'], 3)} <span class="unit">fr</span></td>
+                            <td>${fv(df['25'],     3)} <span class="unit">fr</span></td>
+                            <td>${fv(df['29.97'],  3)} <span class="unit">fr</span></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <!-- Speed factor detail -->
-            <div class="sp-strip">
-                <div><div class="sl">Clock Ratio</div><div class="sv">${x(sf.display || 'N/A')}</div></div>
-                <div><div class="sl">Δ Speed</div><div class="sv">${x(sf.delta || 'N/A')}</div></div>
-                <div class="sp-action">${x(sf.action || '')}</div>
+            <!-- Speed factor -->
+            <div class="info-strip">
+                <div class="strip-title">⚙ Clock Speed Analysis</div>
+                <div class="speed-row">
+                    <div class="speed-cell">
+                        <div class="slbl">Clock Ratio</div>
+                        <div class="sval">${x(sf.display || 'N/A')}</div>
+                    </div>
+                    <div class="speed-cell">
+                        <div class="slbl">Δ Speed</div>
+                        <div class="sval" style="color:${Math.abs(sfDelta)>0.005?'var(--warn)':'var(--text)'}">${x(sf.delta || 'N/A')}</div>
+                    </div>
+                    <div class="speed-action">${x(sf.action || '')}</div>
+                </div>
             </div>
 
             <!-- Technical metadata -->
             <div class="meta-wrap">
-            <table class="mt">
-                <thead><tr><th>Property</th><th>Master Reference</th><th>Comparison Dub</th></tr></thead>
-                <tbody>
-                    <tr><td>Sample Rate</td><td>${x(r.ref_meta.sr)}</td><td>${x(r.comp_meta.sr)}</td></tr>
-                    <tr><td>Duration</td><td>${x(r.ref_meta.duration)}</td><td>${x(r.comp_meta.duration)}</td></tr>
-                    <tr class="${r.chan_mismatch ? 'mm' : ''}">
-                        <td>Channels ${r.chan_mismatch ? '⚠' : ''}</td>
-                        <td>${x(r.ref_meta.channel_label)}</td>
-                        <td>${x(r.comp_meta.channel_label)}</td>
-                    </tr>
-                    <tr><td>Bit Depth / Format</td><td>${x(r.ref_meta.bit_depth)}</td><td>${x(r.comp_meta.bit_depth)}</td></tr>
-                    <tr><td>Integrated Loudness</td><td>—</td><td>${x(lv.lufs)}</td></tr>
-                    <tr><td>Sample Peak</td><td>—</td><td>${x(lv.peak)}</td></tr>
-                    <tr><td>True Peak (dBTP)</td><td>—</td><td>${x(lv.true_peak)}</td></tr>
-                </tbody>
-            </table>
+                <table class="mt">
+                    <thead><tr><th>Property</th><th>Master Reference</th><th>Comparison Dub</th></tr></thead>
+                    <tbody>
+                        <tr><td>Sample Rate</td><td>${x(r.ref_meta.sr)}</td><td>${x(r.comp_meta.sr)}</td></tr>
+                        <tr><td>Duration</td><td>${x(r.ref_meta.duration)}</td><td>${x(r.comp_meta.duration)}</td></tr>
+                        <tr class="${r.chan_mismatch ? 'mm' : ''}">
+                            <td>Channels${r.chan_mismatch ? ' ⚠' : ''}</td>
+                            <td>${x(r.ref_meta.channel_label)}</td>
+                            <td>${x(r.comp_meta.channel_label)}</td>
+                        </tr>
+                        <tr><td>Bit Depth / Format</td><td>${x(r.ref_meta.bit_depth)}</td><td>${x(r.comp_meta.bit_depth)}</td></tr>
+                        <tr><td>Integrated Loudness</td><td>—</td><td>${x(lv.lufs)}</td></tr>
+                        <tr><td>Sample Peak</td><td>—</td><td>${x(lv.peak)}</td></tr>
+                        <tr>
+                            <td>True Peak (dBTP)
+                                <span style="font-size:9px;color:var(--muted);font-family:var(--mono);display:block">EBU R128 / ITU-R BS.1770</span>
+                            </td>
+                            <td>—</td>
+                            <td>${x(lv.true_peak)}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Waveform -->
             <div class="wave-wrap">
                 <div class="wave-box" id="wv-${i}"></div>
-                <div class="wave-legend">
-                    <div class="wl-item"><div class="wl-dot" style="background:#3b82f6"></div>Master (above axis)</div>
-                    <div class="wl-item"><div class="wl-dot" style="background:#f59e0b"></div>Dub (below axis, mirrored)</div>
+                <div class="wave-foot">
+                    <div class="wl"><div class="wd" style="background:#3b82f6"></div>Master (above axis)</div>
+                    <div class="wl"><div class="wd" style="background:#f59e0b"></div>Dub (below axis, mirrored)</div>
+                    <div class="wave-note">First 60s segment · ${WAVEFORM_MAX_POINTS} display points</div>
                 </div>
             </div>
         `;
+
         container.appendChild(div);
         renderWave(i, r.wave_master, r.wave_dub);
     }
 
-    /* ── ECharts mirrored dual-track waveform ── */
+    const WAVEFORM_MAX_POINTS = 2000;
+
+    /* ── ECharts mirrored dual-track waveform ─────────────────────────────── */
     function renderWave(i, waveM, waveD) {
         const el = document.getElementById(`wv-${i}`);
-        if (!el || !waveM || !waveD) return;
+        if (!el || !waveM?.length || !waveD?.length) return;
 
         const chart = echarts.init(el, null, { renderer: 'canvas' });
+
+        // waveM is already normalised to [0,1] (master, above axis)
+        // waveD is pre-negated on server to be in [-1,0] (dub, below axis)
+        // Both share the same time axis → proper visual alignment
 
         chart.setOption({
             backgroundColor: '#f8fafc',
             animation: false,
-            grid: { top: 14, bottom: 14, left: 42, right: 14 },
+            grid: { top: 16, bottom: 16, left: 46, right: 16 },
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                show: true,
                 axisLine: { lineStyle: { color: '#e2e8f0' } },
                 axisTick: { show: false },
                 axisLabel: { show: false },
@@ -497,83 +459,95 @@
             },
             yAxis: {
                 type: 'value',
-                min: -1.1, max: 1.1,
+                min: -1.1,
+                max:  1.1,
+                interval: 0.5,
                 axisLine: { show: false },
                 axisTick: { show: false },
                 axisLabel: {
-                    color: '#94a3b8', fontSize: 9,
+                    color: '#94a3b8',
+                    fontSize: 9,
                     fontFamily: 'IBM Plex Mono',
-                    formatter: v => v === 0 ? '0' : (v > 0 ? '+' + v.toFixed(1) : v.toFixed(1))
+                    formatter: v => v === 0 ? '0' : v.toFixed(1)
                 },
                 splitLine: {
-                    lineStyle: {
-                        color: v => v === 0 ? '#cbd5e1' : '#f1f5f9',
-                        type: v => v === 0 ? 'solid' : 'dashed',
-                        width: v => v === 0 ? 1.5 : 1
-                    }
+                    show: true,
+                    lineStyle: { color: '#e8edf4', type: 'dashed', width: 1 }
                 }
             },
             series: [
+                // Zero axis marker — rendered as a thin solid line
                 {
-                    /* Zero-axis reference line rendered as a markLine */
-                    name: 'Zero',
+                    name: '_zero',
                     type: 'line',
-                    data: Array(waveM.length).fill(0),
+                    data: new Array(Math.min(waveM.length, waveD.length)).fill(0),
                     symbol: 'none',
-                    lineStyle: { color: '#cbd5e1', width: 1 },
-                    z: 0
+                    lineStyle: { color: '#cbd5e1', width: 1.5, type: 'solid' },
+                    z: 1,
+                    silent: true,
+                    legendHoverLink: false
                 },
+                // Master — positive side (above zero)
                 {
                     name: 'Master',
                     type: 'line',
                     data: waveM,
                     symbol: 'none',
-                    lineStyle: { color: '#3b82f6', width: 1.1, opacity: 0.9 },
+                    lineStyle: { color: '#3b82f6', width: 1, opacity: 0.9 },
                     areaStyle: {
+                        origin: 'start',      // fills DOWN from the line to zero
                         color: {
                             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(59,130,246,0.25)' },
-                                { offset: 0.5, color: 'rgba(59,130,246,0.05)' }
+                                { offset: 0,   color: 'rgba(59,130,246,0.3)' },
+                                { offset: 1,   color: 'rgba(59,130,246,0.02)' }
                             ]
                         }
                     },
-                    large: true, largeThreshold: 400, z: 2
+                    large: true, largeThreshold: 500, z: 2
                 },
+                // Dub — negative side (below zero, pre-negated)
                 {
                     name: 'Dub',
                     type: 'line',
                     data: waveD,
                     symbol: 'none',
-                    lineStyle: { color: '#f59e0b', width: 1.1, opacity: 0.9 },
+                    lineStyle: { color: '#f59e0b', width: 1, opacity: 0.9 },
                     areaStyle: {
+                        origin: 'end',        // fills UP from the line to zero
                         color: {
                             type: 'linear', x: 0, y: 1, x2: 0, y2: 0,
                             colorStops: [
-                                { offset: 0,   color: 'rgba(245,158,11,0.25)' },
-                                { offset: 0.5, color: 'rgba(245,158,11,0.05)' }
+                                { offset: 0,   color: 'rgba(245,158,11,0.3)' },
+                                { offset: 1,   color: 'rgba(245,158,11,0.02)' }
                             ]
                         }
                     },
-                    large: true, largeThreshold: 400, z: 2
+                    large: true, largeThreshold: 500, z: 2
                 }
             ],
+            legend: { show: false },
             tooltip: {
                 trigger: 'axis',
                 backgroundColor: '#1e293b',
                 borderColor: '#334155',
                 padding: [8, 12],
                 textStyle: { color: '#cbd5e1', fontSize: 11, fontFamily: 'IBM Plex Mono' },
+                axisPointer: { lineStyle: { color: '#475569', width: 1 } },
                 formatter: params => {
-                    // params[0]=Zero(skip), [1]=Master, [2]=Dub
-                    const m   = params[1]?.value ?? 0;
-                    const d   = -(params[2]?.value ?? 0);   // un-negate for display
-                    const idx = params[1]?.dataIndex ?? '';
+                    // Skip the zero-line series (index 0)
+                    const mSeries = params.find(p => p.seriesName === 'Master');
+                    const dSeries = params.find(p => p.seriesName === 'Dub');
+                    const m   = mSeries?.value ?? 0;
+                    const d   = -(dSeries?.value ?? 0);     // un-negate for display
+                    const idx = mSeries?.dataIndex ?? '';
                     const diff = Math.abs(m - d).toFixed(3);
-                    return `<b>Sample ${idx}</b><br/>
-                            <span style="color:#60a5fa">Master: ${m.toFixed(3)}</span><br/>
-                            <span style="color:#fbbf24">Dub:    ${d.toFixed(3)}</span><br/>
-                            <span style="color:#94a3b8">Δ:      ${diff}</span>`;
+                    return `<div style="font-size:11px">
+                        <b style="color:#e2e8f0">Sample ${idx}</b><br/>
+                        <span style="color:#93c5fd">▲ Master: ${m.toFixed(3)}</span><br/>
+                        <span style="color:#fcd34d">▼ Dub:    ${d.toFixed(3)}</span><br/>
+                        <span style="color:#94a3b8">  Δ:      ${diff}</span>
+                    </div>`;
                 }
             }
         });
