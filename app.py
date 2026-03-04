@@ -111,29 +111,38 @@ def normalize_visual(y):
     return y / m if m > 0 else y
 
 
-def rms_envelope(y, hop=512):
+def rms_envelope(y, target_pts=2000):
     """
-    Compute a smoothed RMS energy envelope for waveform display.
+    Compute a smoothed RMS energy envelope resampled to exactly target_pts points.
 
-    WHY RMS ENVELOPE INSTEAD OF RAW WAVEFORM
-    ──────────────────────────────────────────
-    Raw waveform shows individual sample values — for two dubs of the same
-    content in different languages, the sample-level shape will always look
-    different because syllables, vowels, and consonants land at different
-    exact moments.
+    WHY FIXED OUTPUT LENGTH
+    ───────────────────────
+    librosa.feature.rms with hop=512 downsamples by 512×.
+    A 4s file at 22050Hz → only ~172 RMS frames — far fewer than the 2000
+    display points, so the chart renders data on the left and goes flat-zero
+    on the right.
 
-    RMS envelope averages energy over ~23ms windows (512 samples at 22050Hz),
-    giving a smoothed loudness-over-time curve.  Two dubs of the same content
-    will have very similar RMS envelopes because:
-      - Dialogue starts and stops at the same timestamps
-      - Music hits and silences are shared
-      - Overall energy pacing follows the same script structure
+    Fix: compute RMS with a small hop (64 samples = ~3ms) to get high
+    temporal resolution, then resample to exactly target_pts points using
+    scipy so both Master and Dub always produce the same-length array
+    regardless of file duration.  The chart then fills the full width.
 
-    This makes the mirrored chart visually meaningful — engineers can see
-    whether the dub's energy envelope tracks the master, rather than looking
-    at raw waveform differences that are always present between languages.
+    RMS envelope is still the right display signal because:
+      - It averages energy over short windows → smooth loudness-over-time curve
+      - Two dubs of the same content have similar envelope shapes even in
+        different languages (same silences, same music hits, same pacing)
+      - Raw waveforms always look different between languages at sample level
     """
-    rms = librosa.feature.rms(y=y, hop_length=hop)[0].astype(np.float64)
+    # Small hop for temporal resolution — 64 samples ≈ 2.9ms at 22050Hz
+    rms = librosa.feature.rms(y=y, hop_length=64)[0].astype(np.float64)
+
+    # Resample to exactly target_pts points so chart always fills full width
+    if len(rms) != target_pts:
+        rms = resample_poly(rms,
+                            up=target_pts,
+                            down=len(rms)).astype(np.float64)
+        rms = rms[:target_pts]  # trim any overshoot from poly filter
+
     # Normalise to [0, 1] relative to each file's own peak energy
     peak = np.max(rms)
     return rms / peak if peak > 0 else rms
@@ -447,8 +456,8 @@ def process_file(f, root, y_ref_s_an, y_ref_e_an, y_ref_s_raw,
             #   raw_*  : abs-normalised waveform — shows acoustic detail,
             #             useful for inspecting specific problem regions
             # Both use abs() so Master sits above axis, Dub below (mirror layout)
-            "wave_rms_master":  downsample_waveform(rms_envelope(y_ref_s_raw)),
-            "wave_rms_dub":     downsample_waveform(-rms_envelope(y_c_s_raw)),
+            "wave_rms_master":  rms_envelope(y_ref_s_raw).tolist(),
+            "wave_rms_dub":     (-rms_envelope(y_c_s_raw)).tolist(),
             "wave_raw_master":  downsample_waveform(np.abs(normalize_visual(y_ref_s_raw))),
             "wave_raw_dub":     downsample_waveform(-np.abs(normalize_visual(y_c_s_raw))),
             "chan_mismatch":  ref_meta["channels"] != comp_meta["channels"],
