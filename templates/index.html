@@ -3,522 +3,545 @@
 <head>
     <meta charset="UTF-8">
     <title>Sync Engine Pro | Studio QC</title>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand: #2563eb;
-            --brand-light: #eff6ff;
-            --bg: #f0f4f8;
-            --card: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --border: #e2e8f0;
-            --danger: #ef4444;
-            --danger-bg: #fef2f2;
-            --success: #10b981;
-            --success-bg: #f0fdf4;
-            --warn: #f59e0b;
+            --brand:       #3b6ef8;
+            --brand-dim:   #1e3a8a22;
+            --bg:          #f0f3f9;
+            --card:        #ffffff;
+            --text:        #0d1526;
+            --muted:       #64748b;
+            --border:      #e2e8f0;
+            --danger:      #e53e3e;
+            --danger-bg:   #fff5f5;
+            --danger-bd:   #feb2b2;
+            --success:     #0d9f6e;
+            --success-bg:  #f0fdf8;
+            --success-bd:  #6ee7b7;
+            --warn:        #d97706;
+            --warn-bg:     #fffbeb;
+            --mono:        'IBM Plex Mono', monospace;
+            --sans:        'IBM Plex Sans', sans-serif;
         }
 
-        * { box-sizing: border-box; margin: 0; font-family: 'DM Sans', sans-serif; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--sans); background: var(--bg); color: var(--text); padding: 32px 24px; min-height: 100vh; }
+        .page { max-width: 1120px; margin: 0 auto; }
 
-        body { background: var(--bg); color: var(--text); padding: 32px; min-height: 100vh; }
+        /* ── HEADER ── */
+        .top-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+        .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+        .logo span { color: var(--brand); }
+        .logo sub { font-size: 11px; font-weight: 500; color: var(--muted); vertical-align: baseline; margin-left: 6px; letter-spacing: 0; }
+        .top-tagline { font-size: 12px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
 
-        .container { max-width: 1100px; margin: 0 auto; }
-
-        /* ---- HEADER ---- */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-        .header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
-        .header h1 span { color: var(--brand); }
-        .header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
-        /* ---- CONTROL PANEL ---- */
-        .control-panel {
+        /* ── CONTROL PANEL ── */
+        .panel {
             background: var(--card);
             border-radius: 14px;
+            border: 1px solid var(--border);
             padding: 20px 24px;
             display: flex;
             align-items: flex-end;
-            gap: 20px;
+            gap: 18px;
             margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+            flex-wrap: wrap;
         }
-        .field { flex: 1; }
-        .field label {
+        .field { flex: 1; min-width: 180px; }
+        .field-label {
             display: block;
             font-size: 10px;
             font-weight: 700;
-            letter-spacing: 1.2px;
-            color: var(--muted);
+            letter-spacing: 1.4px;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            color: var(--muted);
+            margin-bottom: 7px;
+            font-family: var(--mono);
         }
-        .file-input-wrap {
+        .file-drop {
             position: relative;
             border: 1.5px dashed var(--border);
             border-radius: 8px;
             padding: 10px 14px;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
+            transition: border-color 0.18s, background 0.18s;
             background: var(--bg);
+            overflow: hidden;
         }
-        .file-input-wrap:hover { border-color: var(--brand); background: var(--brand-light); }
-        .file-input-wrap input[type="file"] {
-            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-        }
-        .file-input-wrap .filename {
+        .file-drop:hover { border-color: var(--brand); background: var(--brand-dim); }
+        .file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+        .file-drop .fname {
             font-size: 13px;
+            font-family: var(--mono);
             font-weight: 500;
             color: var(--text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-family: 'DM Mono', monospace;
         }
-        .file-input-wrap .placeholder { color: var(--muted); }
+        .file-drop .fname.empty { color: var(--muted); font-weight: 400; }
 
-        .toggle-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 4px;
-            white-space: nowrap;
-        }
-        .toggle-wrap label { font-size: 13px; font-weight: 600; cursor: pointer; }
-        input[type="checkbox"] { accent-color: var(--brand); width: 16px; height: 16px; cursor: pointer; }
+        .toggle-row { display: flex; align-items: center; gap: 7px; padding-bottom: 3px; white-space: nowrap; }
+        .toggle-row label { font-size: 13px; font-weight: 600; cursor: pointer; }
+        input[type="checkbox"] { accent-color: var(--brand); width: 15px; height: 15px; cursor: pointer; }
 
         .btn-run {
             background: var(--brand);
-            color: white;
+            color: #fff;
             border: none;
-            padding: 11px 28px;
+            padding: 11px 26px;
             border-radius: 8px;
+            font-family: var(--sans);
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
             transition: opacity 0.15s, transform 0.1s;
             white-space: nowrap;
+            flex-shrink: 0;
         }
-        .btn-run:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-run:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .btn-run:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        .btn-wipe {
+        .btn-ghost {
             background: none;
             color: var(--muted);
             border: 1px solid var(--border);
-            padding: 8px 16px;
+            padding: 9px 16px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
+            font-family: var(--sans);
             transition: color 0.2s, border-color 0.2s;
         }
-        .btn-wipe:hover { color: var(--danger); border-color: var(--danger); }
+        .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
 
-        /* ---- SUMMARY BAR ---- */
+        /* ── SUMMARY BAR ── */
         .summary-bar {
             display: none;
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 16px 24px;
-            margin-bottom: 20px;
-            display: none;
-            gap: 32px;
+            padding: 14px 22px;
+            margin-bottom: 22px;
+            gap: 28px;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
-        .summary-bar.visible { display: flex; }
-        .summary-stat { text-align: center; }
-        .summary-stat .val { font-size: 26px; font-weight: 900; line-height: 1; }
-        .summary-stat .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
-        .summary-stat.pass .val { color: var(--success); }
-        .summary-stat.fail .val { color: var(--danger); }
-        .summary-divider { width: 1px; height: 36px; background: var(--border); }
+        .summary-bar.show { display: flex; }
+        .sum-stat .val { font-size: 24px; font-weight: 700; line-height: 1; font-family: var(--mono); }
+        .sum-stat .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; margin-top: 2px; font-family: var(--mono); }
+        .sum-stat.ok  .val { color: var(--success); }
+        .sum-stat.bad .val { color: var(--danger); }
+        .sdiv { width: 1px; height: 32px; background: var(--border); }
 
-        /* ---- LOADING STATE ---- */
-        #loadingState {
-            display: none;
-            text-align: center;
-            padding: 60px 20px;
-        }
-        #loadingState.visible { display: block; }
-        .spinner {
-            width: 44px;
-            height: 44px;
+        /* ── LOADING ── */
+        #loader { display: none; text-align: center; padding: 56px; }
+        #loader.show { display: block; }
+        .spin {
+            width: 40px; height: 40px;
             border: 3px solid var(--border);
             border-top-color: var(--brand);
             border-radius: 50%;
-            animation: spin 0.75s linear infinite;
-            margin: 0 auto 16px;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 14px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #loadingState p { color: var(--muted); font-size: 14px; font-weight: 500; }
-        #loadingMsg { color: var(--text); font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        #loader .load-msg { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        #loader .load-sub { font-size: 13px; color: var(--muted); }
 
-        /* ---- ERROR BANNER ---- */
-        .error-banner {
-            background: var(--danger-bg);
-            border: 1px solid #fecaca;
-            border-radius: 10px;
-            padding: 16px 20px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        .error-banner.visible { display: block; }
-        .error-banner strong { color: var(--danger); font-size: 14px; }
-        .error-banner pre {
-            margin-top: 8px;
-            font-size: 11px;
-            font-family: 'DM Mono', monospace;
-            color: #7f1d1d;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 120px;
-            overflow-y: auto;
-        }
+        /* ── ERROR BANNER ── */
+        .err-banner { display: none; background: var(--danger-bg); border: 1px solid var(--danger-bd); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; }
+        .err-banner.show { display: block; }
+        .err-banner strong { color: var(--danger); font-size: 13px; }
+        .err-banner pre { margin-top: 8px; font-size: 11px; font-family: var(--mono); color: #7f1d1d; white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; }
 
-        /* ---- RESULT CARD ---- */
-        .result-card {
+        /* ── RESULT CARD ── */
+        .rcard {
             background: var(--card);
+            border: 1px solid var(--border);
             border-radius: 16px;
             padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
-            position: relative;
+            margin-bottom: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 18px rgba(0,0,0,0.03);
         }
-        .result-card.error-card { border-color: #fecaca; background: var(--danger-bg); }
+        .rcard.err { border-color: var(--danger-bd); background: var(--danger-bg); }
 
-        .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-        .card-header h3 { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; word-break: break-all; }
-        .card-header .reason { font-size: 12px; color: var(--muted); margin-top: 3px; }
+        .rcard-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+        .rcard-head h3 { font-size: 15px; font-weight: 700; font-family: var(--mono); word-break: break-all; }
+        .rcard-head .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
-        .status-badge {
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 11px;
-            letter-spacing: 0.8px;
-            text-transform: uppercase;
-            white-space: nowrap;
-            margin-left: 12px;
-            flex-shrink: 0;
-        }
-        .badge-pass { background: var(--success-bg); color: #065f46; }
-        .badge-fail { background: var(--danger-bg); color: #991b1b; }
-        .badge-error { background: #fff7ed; color: #92400e; }
+        .badge { padding: 4px 13px; border-radius: 20px; font-weight: 700; font-size: 11px; letter-spacing: 0.9px; text-transform: uppercase; white-space: nowrap; margin-left: 12px; flex-shrink: 0; font-family: var(--mono); }
+        .badge-pass  { background: var(--success-bg); color: #065f46; border: 1px solid var(--success-bd); }
+        .badge-fail  { background: var(--danger-bg);  color: #991b1b; border: 1px solid var(--danger-bd); }
+        .badge-error { background: var(--warn-bg);    color: #92400e; border: 1px solid #fde68a; }
 
-        /* ---- STATS GRID ---- */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .stat-box {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            padding: 14px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .stat-box.alert { background: var(--danger-bg); border-color: #fecaca; }
-        .stat-label { font-size: 9px; font-weight: 800; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-        .stat-val { font-size: 20px; font-weight: 900; color: var(--text); font-family: 'DM Mono', monospace; }
-        .stat-box.alert .stat-val { color: var(--danger); }
+        /* ── STATS GRID ── */
+        .sgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; margin-bottom: 20px; }
+        .sbox { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 13px 10px; text-align: center; }
+        .sbox.alert { background: var(--danger-bg); border-color: var(--danger-bd); }
+        .sbox.warn  { background: var(--warn-bg);   border-color: #fde68a; }
+        .sbox-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; color: var(--muted); text-transform: uppercase; margin-bottom: 7px; font-family: var(--mono); }
+        .sbox-val { font-size: 17px; font-weight: 700; color: var(--text); font-family: var(--mono); line-height: 1.2; }
+        .sbox.alert .sbox-val { color: var(--danger); }
+        .sbox.warn  .sbox-val { color: var(--warn); }
 
-        /* ---- META TABLE ---- */
-        .meta-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-        .meta-table th {
-            text-align: left;
-            padding: 8px 10px;
-            background: var(--bg);
-            color: var(--muted);
-            font-weight: 700;
-            font-size: 10px;
-            letter-spacing: 0.8px;
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
+        /* ── SPEED FACTOR STRIP ── */
+        .speed-strip {
+            background: #f8faff;
+            border: 1px solid #dbeafe;
+            border-radius: 9px;
+            padding: 12px 16px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
-        .meta-table td {
-            padding: 9px 10px;
-            border-bottom: 1px solid var(--border);
-            font-family: 'DM Mono', monospace;
-            color: #334155;
-        }
-        .meta-table tr.mismatch td { background: #fff7ed; color: #92400e; font-weight: 700; }
+        .speed-strip .sp-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brand); font-family: var(--mono); }
+        .speed-strip .sp-val { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+        .speed-strip .sp-action { font-size: 13px; color: var(--muted); flex: 1; text-align: right; }
 
-        /* ---- CHART ---- */
-        .chart-container {
-            height: 200px;
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            background: #0f172a;
-        }
+        /* ── META TABLE ── */
+        .meta-wrap { overflow-x: auto; margin-bottom: 18px; }
+        table.mt { width: 100%; border-collapse: collapse; font-size: 12px; }
+        table.mt th { text-align: left; padding: 8px 10px; background: var(--bg); color: var(--muted); font-weight: 700; font-size: 10px; letter-spacing: 0.9px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+        table.mt td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: #334155; }
+        table.mt tr.mm td { background: var(--warn-bg); color: #92400e; font-weight: 600; }
+        table.mt tr:last-child td { border-bottom: none; }
 
-        /* ---- RESPONSIVE ---- */
-        @media (max-width: 700px) {
-            .control-panel { flex-direction: column; align-items: stretch; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        /* ── WAVEFORM ── */
+        .wave-box { width: 100%; height: 180px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #0c1525; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 720px) {
+            .panel { flex-direction: column; align-items: stretch; }
+            .sgrid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-<div class="container">
+<div class="page">
 
     <!-- Header -->
-    <div class="header">
+    <div class="top-bar">
         <div>
-            <h1>🎧 Sync Engine <span>Pro</span></h1>
-            <p>Temporal offset · Drift detection · Vocal DNA · Phase health</p>
+            <div class="logo">🎧 Sync Engine <span>Pro</span><sub>v5</sub></div>
+            <div class="top-tagline">Temporal offset · Drift · Speed factor · Vocal DNA · True Peak · Phase</div>
         </div>
-        <button class="btn-wipe" onclick="wipeCache()">Clear Cache</button>
+        <button class="btn-ghost" onclick="wipeCache()">Clear Cache</button>
     </div>
 
     <!-- Control Panel -->
-    <div class="control-panel">
+    <div class="panel">
         <div class="field">
-            <label>Master Reference</label>
-            <div class="file-input-wrap" id="refWrap">
-                <div class="filename placeholder" id="refName">Choose master file…</div>
-                <input type="file" id="refFile" accept="audio/*" onchange="onFileChange('refFile','refName', false)">
+            <span class="field-label">Master Reference</span>
+            <div class="file-drop">
+                <div class="fname empty" id="refName">Choose master file…</div>
+                <input type="file" id="refFile" accept="audio/*" onchange="onPick('refFile','refName',false)">
             </div>
         </div>
         <div class="field">
-            <label>Dub Files</label>
-            <div class="file-input-wrap" id="compWrap">
-                <div class="filename placeholder" id="compName">Choose dub files…</div>
-                <input type="file" id="compFiles" multiple accept="audio/*" onchange="onFileChange('compFiles','compName', true)">
+            <span class="field-label">Dub Files</span>
+            <div class="file-drop">
+                <div class="fname empty" id="compName">Choose dub files…</div>
+                <input type="file" id="compFiles" multiple accept="audio/*" onchange="onPick('compFiles','compName',true)">
             </div>
         </div>
-        <div class="toggle-wrap">
-            <input type="checkbox" id="vocalLogic" checked>
-            <label for="vocalLogic">Vocal DNA Filter</label>
+        <div class="toggle-row">
+            <input type="checkbox" id="vocalDna" checked>
+            <label for="vocalDna">Vocal DNA Filter</label>
         </div>
-        <button class="btn-run" id="runBtn" onclick="runAnalysis()">Run QC Engine</button>
+        <button class="btn-run" id="runBtn" onclick="runQC()">Run QC Engine</button>
     </div>
 
     <!-- Summary Bar -->
-    <div class="summary-bar" id="summaryBar">
-        <div class="summary-stat">
-            <div class="val" id="sumTotal">—</div>
-            <div class="lbl">Processed</div>
-        </div>
-        <div class="summary-divider"></div>
-        <div class="summary-stat pass">
-            <div class="val" id="sumPass">—</div>
-            <div class="lbl">Passed</div>
-        </div>
-        <div class="summary-divider"></div>
-        <div class="summary-stat fail">
-            <div class="val" id="sumFail">—</div>
-            <div class="lbl">Failed</div>
-        </div>
+    <div class="summary-bar" id="sumBar">
+        <div class="sum-stat"><div class="val" id="sumTotal">—</div><div class="lbl">Processed</div></div>
+        <div class="sdiv"></div>
+        <div class="sum-stat ok"><div class="val" id="sumPass">—</div><div class="lbl">Passed</div></div>
+        <div class="sdiv"></div>
+        <div class="sum-stat bad"><div class="val" id="sumFail">—</div><div class="lbl">Failed / Error</div></div>
     </div>
 
-    <!-- Loading State -->
-    <div id="loadingState">
-        <div class="spinner"></div>
-        <div id="loadingMsg">Running QC Engine…</div>
-        <p>Analyzing temporal DNA & drift. This may take a moment for large files.</p>
+    <!-- Loader -->
+    <div id="loader">
+        <div class="spin"></div>
+        <div class="load-msg" id="loadMsg">Running QC Engine…</div>
+        <div class="load-sub">Analyzing temporal DNA, drift &amp; levels. Large files may take a moment.</div>
     </div>
 
     <!-- Error Banner -->
-    <div class="error-banner" id="errorBanner">
+    <div class="err-banner" id="errBanner">
         <strong>⚠ Analysis Failed</strong>
-        <pre id="errorDetail"></pre>
+        <pre id="errDetail"></pre>
     </div>
 
     <!-- Results -->
-    <div id="resultsList"></div>
+    <div id="results"></div>
 
 </div>
 
 <script>
-    function onFileChange(inputId, labelId, multi) {
+    // ── File picker label update ──────────────────────────────────────────────
+    function onPick(inputId, labelId, multi) {
         const files = document.getElementById(inputId).files;
-        const label = document.getElementById(labelId);
-        if (!files.length) { label.textContent = 'Choose file…'; label.classList.add('placeholder'); return; }
-        label.classList.remove('placeholder');
-        label.textContent = multi && files.length > 1 ? `${files.length} files selected` : files[0].name;
+        const el    = document.getElementById(labelId);
+        if (!files.length) { el.textContent = 'Choose file…'; el.classList.add('empty'); return; }
+        el.classList.remove('empty');
+        el.textContent = (multi && files.length > 1) ? `${files.length} files selected` : files[0].name;
     }
 
+    // ── Cache wipe ────────────────────────────────────────────────────────────
     async function wipeCache() {
-        if (!confirm("Clear all session data from the server?")) return;
+        if (!confirm('Clear all session data from the server?')) return;
         await fetch('/wipe', { method: 'POST' });
         location.reload();
     }
 
-    function setLoading(active, msg = 'Running QC Engine…') {
-        document.getElementById('loadingState').classList.toggle('visible', active);
-        document.getElementById('loadingMsg').textContent = msg;
-        document.getElementById('runBtn').disabled = active;
-        document.getElementById('errorBanner').classList.remove('visible');
+    // ── Loading state helpers ─────────────────────────────────────────────────
+    function setLoading(on, msg = 'Running QC Engine…') {
+        document.getElementById('loader').classList.toggle('show', on);
+        document.getElementById('loadMsg').textContent = msg;
+        document.getElementById('runBtn').disabled = on;
+        document.getElementById('errBanner').classList.remove('show');
     }
-
     function showError(detail) {
-        document.getElementById('errorBanner').classList.add('visible');
-        document.getElementById('errorDetail').textContent = detail;
+        document.getElementById('errBanner').classList.add('show');
+        document.getElementById('errDetail').textContent = detail;
         setLoading(false);
     }
 
-    async function runAnalysis() {
-        const ref = document.getElementById('refFile').files[0];
+    // ── Run analysis ──────────────────────────────────────────────────────────
+    async function runQC() {
+        const ref   = document.getElementById('refFile').files[0];
         const comps = document.getElementById('compFiles').files;
+        if (!ref)         { alert('Please select a master reference file.'); return; }
+        if (!comps.length){ alert('Please select at least one dub file.');   return; }
 
-        if (!ref) { alert("Please select a master reference file."); return; }
-        if (!comps.length) { alert("Please select at least one dub file."); return; }
-
-        document.getElementById('resultsList').innerHTML = '';
-        document.getElementById('summaryBar').classList.remove('visible');
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('sumBar').classList.remove('show');
         setLoading(true, `Analyzing ${comps.length} file${comps.length > 1 ? 's' : ''}…`);
 
         const fd = new FormData();
         fd.append('reference', ref);
         for (const f of comps) fd.append('comparison[]', f);
-        fd.append('vocal_logic', document.getElementById('vocalLogic').checked);
+        fd.append('vocal_logic', document.getElementById('vocalDna').checked);
 
         let data;
         try {
             const res = await fetch('/upload', { method: 'POST', body: fd });
             data = await res.json();
             if (!res.ok || data.error) { showError(data.error || 'Unknown server error'); return; }
-        } catch (e) {
-            showError(`Network error: ${e.message}`); return;
-        }
+        } catch(e) { showError(`Network error: ${e.message}`); return; }
 
         setLoading(false);
-        renderResults(data);
+        renderAll(data);
     }
 
-    function renderResults(data) {
-        const container = document.getElementById('resultsList');
+    // ── Render results ────────────────────────────────────────────────────────
+    function renderAll(data) {
         const results = data.results || [];
+        const passed  = results.filter(r => r.status === 'PASS').length;
+        const failed  = results.length - passed;
 
-        // Summary bar
-        const passed = results.filter(r => r.status === 'PASS').length;
-        const failed = results.filter(r => r.status !== 'PASS').length;
         document.getElementById('sumTotal').textContent = results.length;
-        document.getElementById('sumPass').textContent = passed;
-        document.getElementById('sumFail').textContent = failed;
-        document.getElementById('summaryBar').classList.add('visible');
+        document.getElementById('sumPass').textContent  = passed;
+        document.getElementById('sumFail').textContent  = failed;
+        document.getElementById('sumBar').classList.add('show');
 
-        results.forEach((r, i) => {
-            // ---- Error card (per-file crash) ----
-            if (r.error) {
-                const div = document.createElement('div');
-                div.className = 'result-card error-card';
-                div.innerHTML = `
-                    <div class="card-header">
-                        <div>
-                            <h3>${r.filename}</h3>
-                            <div class="reason" style="color:#ef4444;">Processing failed</div>
-                        </div>
-                        <span class="status-badge badge-error">ERROR</span>
-                    </div>
-                    <pre style="font-size:12px; color:#7f1d1d; white-space:pre-wrap;">${r.reason}</pre>
-                `;
-                container.appendChild(div);
-                return;
-            }
+        const container = document.getElementById('results');
+        container.innerHTML = '';
 
-            const isPass = r.status === 'PASS';
-            const offsetAlert = Math.abs(r.offset_ms) > 80;
-            const driftAlert = Math.abs(r.total_drift_ms) > 150;
-            const dnaAlert = r.dna_match < 55;
+        results.forEach((r, i) => renderCard(r, i, container));
+    }
 
-            const div = document.createElement('div');
-            div.className = 'result-card';
+    function renderCard(r, i, container) {
+        const div = document.createElement('div');
+
+        // Error card
+        if (r.error) {
+            div.className = 'rcard err';
             div.innerHTML = `
-                <div class="card-header">
-                    <div>
-                        <h3>${r.filename}</h3>
-                        <div class="reason">${r.reason}</div>
-                    </div>
-                    <span class="status-badge ${isPass ? 'badge-pass' : 'badge-fail'}">${r.status}</span>
+                <div class="rcard-head">
+                    <div><h3>${esc(r.filename)}</h3><div class="sub" style="color:var(--danger)">Processing failed</div></div>
+                    <span class="badge badge-error">ERROR</span>
                 </div>
-
-                <div class="stats-grid">
-                    <div class="stat-box ${offsetAlert ? 'alert' : ''}">
-                        <div class="stat-label">Start Offset</div>
-                        <div class="stat-val">${r.offset_ms}ms</div>
-                    </div>
-                    <div class="stat-box ${driftAlert ? 'alert' : ''}">
-                        <div class="stat-label">Total Drift</div>
-                        <div class="stat-val">${r.total_drift_ms}ms</div>
-                    </div>
-                    <div class="stat-box ${dnaAlert ? 'alert' : ''}">
-                        <div class="stat-label">DNA Match</div>
-                        <div class="stat-val">${r.dna_match}%</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Phase Health</div>
-                        <div class="stat-val" style="font-size:14px">${r.phase}</div>
-                    </div>
-                </div>
-
-                <table class="meta-table">
-                    <thead>
-                        <tr>
-                            <th>Property</th>
-                            <th>Master Reference</th>
-                            <th>Comparison Dub</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Sample Rate</td><td>${r.ref_meta.sr}</td><td>${r.comp_meta.sr}</td></tr>
-                        <tr><td>Duration</td><td>${r.ref_meta.duration}</td><td>${r.comp_meta.duration}</td></tr>
-                        <tr class="${r.chan_mismatch ? 'mismatch' : ''}">
-                            <td>Channels ${r.chan_mismatch ? '⚠' : ''}</td>
-                            <td>${r.ref_meta.channel_label}</td>
-                            <td>${r.comp_meta.channel_label}</td>
-                        </tr>
-                        <tr><td>Loudness / Peak</td><td>—</td><td>${r.levels.lufs} / ${r.levels.peak}</td></tr>
-                    </tbody>
-                </table>
-
-                <div id="chart-${i}" class="chart-container"></div>
-            `;
+                <pre style="font-size:12px;color:#7f1d1d;white-space:pre-wrap;font-family:var(--mono)">${esc(r.reason)}</pre>`;
             container.appendChild(div);
+            return;
+        }
 
-            // Render waveform chart
-            Plotly.newPlot(`chart-${i}`, [
+        const isPass     = r.status === 'PASS';
+        const offAlert   = Math.abs(r.offset_ms)      > 80;
+        const driftAlert = Math.abs(r.total_drift_ms) > 150;
+        const dnaAlert   = r.dna_match < 55;
+        const sf         = r.speed_factor || {};
+        const lv         = r.levels || {};
+
+        // Speed factor styling
+        const sfDelta  = parseFloat(sf.delta) || 0;
+        const sfClass  = Math.abs(sfDelta) > 0.005 ? 'warn' : '';
+
+        div.className = 'rcard';
+        div.innerHTML = `
+            <div class="rcard-head">
+                <div>
+                    <h3>${esc(r.filename)}</h3>
+                    <div class="sub">${esc(r.reason)}</div>
+                </div>
+                <span class="badge ${isPass ? 'badge-pass' : 'badge-fail'}">${r.status}</span>
+            </div>
+
+            <!-- 5-metric stats grid -->
+            <div class="sgrid">
+                <div class="sbox ${offAlert ? 'alert' : ''}">
+                    <div class="sbox-lbl">Start Offset</div>
+                    <div class="sbox-val">${r.offset_ms}ms</div>
+                </div>
+                <div class="sbox ${driftAlert ? 'alert' : ''}">
+                    <div class="sbox-lbl">Total Drift</div>
+                    <div class="sbox-val">${r.total_drift_ms}ms</div>
+                </div>
+                <div class="sbox ${dnaAlert ? 'alert' : ''}">
+                    <div class="sbox-lbl">DNA Match</div>
+                    <div class="sbox-val">${r.dna_match}%</div>
+                </div>
+                <div class="sbox">
+                    <div class="sbox-lbl">Phase Health</div>
+                    <div class="sbox-val" style="font-size:13px">${esc(r.phase)}</div>
+                </div>
+                <div class="sbox ${sfClass}">
+                    <div class="sbox-lbl">Speed Factor</div>
+                    <div class="sbox-val" style="font-size:14px">${esc(sf.display || 'N/A')}</div>
+                </div>
+            </div>
+
+            <!-- Speed factor detail strip -->
+            <div class="speed-strip">
+                <div><div class="sp-lbl">Clock Ratio</div><div class="sp-val">${esc(sf.display || 'N/A')}</div></div>
+                <div><div class="sp-lbl">Δ Speed</div><div class="sp-val">${esc(sf.delta || 'N/A')}</div></div>
+                <div class="sp-action">${esc(sf.action || '')}</div>
+            </div>
+
+            <!-- Technical metadata -->
+            <div class="meta-wrap">
+            <table class="mt">
+                <thead><tr><th>Property</th><th>Master Reference</th><th>Comparison Dub</th></tr></thead>
+                <tbody>
+                    <tr><td>Sample Rate</td><td>${esc(r.ref_meta.sr)}</td><td>${esc(r.comp_meta.sr)}</td></tr>
+                    <tr><td>Duration</td><td>${esc(r.ref_meta.duration)}</td><td>${esc(r.comp_meta.duration)}</td></tr>
+                    <tr class="${r.chan_mismatch ? 'mm' : ''}">
+                        <td>Channels ${r.chan_mismatch ? '⚠' : ''}</td>
+                        <td>${esc(r.ref_meta.channel_label)}</td>
+                        <td>${esc(r.comp_meta.channel_label)}</td>
+                    </tr>
+                    <tr><td>Bit Depth</td><td>${esc(r.ref_meta.bit_depth)}</td><td>${esc(r.comp_meta.bit_depth)}</td></tr>
+                    <tr><td>Integrated Loudness</td><td>—</td><td>${esc(lv.lufs)}</td></tr>
+                    <tr><td>Sample Peak</td><td>—</td><td>${esc(lv.peak)}</td></tr>
+                    <tr><td>True Peak (dBTP)</td><td>—</td><td>${esc(lv.true_peak)}</td></tr>
+                </tbody>
+            </table>
+            </div>
+
+            <!-- ECharts waveform -->
+            <div class="wave-box" id="wave-${i}"></div>
+        `;
+
+        container.appendChild(div);
+        renderWave(i, r.wave_a, r.wave_r);
+    }
+
+    // ── ECharts waveform renderer ─────────────────────────────────────────────
+    function renderWave(i, waveA, waveR) {
+        const el = document.getElementById(`wave-${i}`);
+        if (!el || !waveA || !waveR) return;
+
+        const chart = echarts.init(el, null, { renderer: 'canvas' });
+
+        chart.setOption({
+            backgroundColor: '#0c1525',
+            animation: false,
+            grid: { top: 28, bottom: 22, left: 44, right: 16 },
+            legend: {
+                top: 4,
+                right: 10,
+                textStyle: { color: '#94a3b8', fontSize: 11, fontFamily: 'IBM Plex Mono' },
+                itemWidth: 14,
+                itemHeight: 2,
+                data: ['Master', 'Dub']
+            },
+            xAxis: {
+                type: 'category',
+                show: true,
+                boundaryGap: false,
+                axisLine:   { lineStyle: { color: '#1e3a5f' } },
+                axisTick:   { show: false },
+                axisLabel:  { show: false },
+                splitLine:  { show: false }
+            },
+            yAxis: {
+                type: 'value',
+                min: -1.05,
+                max:  1.05,
+                axisLine:  { show: false },
+                axisTick:  { show: false },
+                axisLabel: { color: '#334155', fontSize: 10, fontFamily: 'IBM Plex Mono', formatter: v => v.toFixed(1) },
+                splitLine: { lineStyle: { color: '#1e2d45', type: 'dashed' } }
+            },
+            series: [
                 {
-                    y: r.wave_a,
                     name: 'Master',
-                    line: { color: '#60a5fa', width: 1 },
-                    opacity: 0.7,
-                    type: 'scatter',
-                    mode: 'lines'
+                    type: 'line',
+                    data: waveA,
+                    symbol: 'none',
+                    lineStyle: { color: '#60a5fa', width: 1.2, opacity: 0.85 },
+                    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                        colorStops: [{ offset: 0, color: 'rgba(96,165,250,0.15)' }, { offset: 1, color: 'rgba(96,165,250,0)' }] }
+                    },
+                    large: true,
+                    largeThreshold: 400
                 },
                 {
-                    y: r.wave_r,
                     name: 'Dub',
-                    line: { color: '#fbbf24', width: 1 },
-                    opacity: 0.8,
-                    type: 'scatter',
-                    mode: 'lines'
+                    type: 'line',
+                    data: waveR,
+                    symbol: 'none',
+                    lineStyle: { color: '#fbbf24', width: 1.2, opacity: 0.85 },
+                    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                        colorStops: [{ offset: 0, color: 'rgba(251,191,36,0.12)' }, { offset: 1, color: 'rgba(251,191,36,0)' }] }
+                    },
+                    large: true,
+                    largeThreshold: 400
                 }
-            ], {
-                paper_bgcolor: '#0f172a',
-                plot_bgcolor: '#0f172a',
-                font: { color: '#94a3b8', size: 11 },
-                margin: { t: 28, b: 20, l: 36, r: 12 },
-                legend: { orientation: 'h', y: 1.2, font: { color: '#cbd5e1' } },
-                xaxis: { showgrid: false, zeroline: false, color: '#334155' },
-                yaxis: { showgrid: false, zeroline: false, color: '#334155', range: [-1.1, 1.1] }
-            }, { responsive: true, displayModeBar: false });
+            ],
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: '#0f172a',
+                borderColor: '#1e3a5f',
+                textStyle: { color: '#cbd5e1', fontSize: 11, fontFamily: 'IBM Plex Mono' },
+                formatter: params => {
+                    const idx  = params[0]?.dataIndex ?? '';
+                    const a    = (params[0]?.value ?? 0).toFixed(3);
+                    const b    = (params[1]?.value ?? 0).toFixed(3);
+                    const diff = Math.abs((params[0]?.value ?? 0) - (params[1]?.value ?? 0)).toFixed(3);
+                    return `<b>Sample ${idx}</b><br/>Master: ${a}<br/>Dub: ${b}<br/>Δ: ${diff}`;
+                }
+            }
         });
+
+        // Responsive resize
+        const ro = new ResizeObserver(() => chart.resize());
+        ro.observe(el);
+    }
+
+    // ── Escape HTML ───────────────────────────────────────────────────────────
+    function esc(s) {
+        if (s == null) return '—';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 </script>
 </body>
