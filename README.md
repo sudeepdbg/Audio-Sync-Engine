@@ -1,39 +1,20 @@
-#Dub Sync & Audio QC Validator (v9)
-Author- Sudeep Kumar | sudeepdbg@gmail.com | +919590675753
+# Dub Sync & Audio QC Validator (v9)
 
-Broadcast/OTT localization QC tool. Two modes:
+**Author:** Sudeep Kumar | sudeepdbg@gmail.com | +91 95906 75753
 
-1. **Dub Sync + QC** — compares a dub against a master reference: start offset,
-   drift, clock-speed factor, onset DNA match, chroma DNA match, plus the full
-   advanced QC suite below.
-2. **Standalone Audio QC** — no reference needed. Runs every check that
-   doesn't require a comparison file, against one or more independent audio
-   files.
+A Flask-based Broadcast/OTT localization QC tool designed to validate dubbed audio against master references and perform advanced standalone audio quality checks. It bridges the gap between basic file comparison and deep signal analysis using `librosa`, `ffmpeg`, and optional ASR.
 
-## Contents
+## 🎯 Core Modes
 
-```
-.
-├── audio_align.py              # Flask app — routes, alignment analysis, orchestration
-├── capability_extensions.py    # ASR (language ID / profanity), DME check, AD detection, spatial loudness
-├── requirements.txt
-└── templates/
-    └── index.html              # Frontend (vanilla JS + ECharts)
-```
+1. **Dub Sync + QC (`/upload`)**: Compares a dub against a master reference. Analyzes start offset, drift, clock-speed factor, onset DNA match, chroma DNA match, and runs the full advanced QC suite.
+2. **Standalone Audio QC (`/qc`)**: No reference needed. Runs every check that doesn't require a comparison file against one or more independent audio files.
 
-`audio_align.py` imports directly from `capability_extensions.py` — the two
-must live in the same folder. `index.html` must be under `templates/` since
-Flask's `render_template()` looks there by default.
+---
 
-## Setup
+## 🚀 Quickstart
 
-```bash
-pip install -r requirements.txt --break-system-packages   # or use a venv
-```
-
-You also need `ffmpeg` and `ffprobe` on `PATH` (or set `FFMPEG_PATH` /
-`FFPROBE_PATH`). Most of the advanced QC checks shell out to them.
-
+### Prerequisites
+You need `ffmpeg` and `ffprobe` installed and accessible on your system `PATH`.
 ```bash
 # Debian/Ubuntu
 apt-get install ffmpeg
@@ -42,202 +23,93 @@ apt-get install ffmpeg
 brew install ffmpeg
 ```
 
-Run it:
-
+### Installation & Execution
 ```bash
+# Clone the repo
+git clone https://github.com/sudeepdbg/Dub-Sync-Audio-QC-Validator.git
+cd Dub-Sync-Audio-QC-Validator
+
+# Install dependencies (use a virtualenv recommended)
+pip install -r requirements.txt --break-system-packages
+
+# Run the application
 python3 audio_align.py
-# or, for production:
+```
+By default, the app binds to `http://127.0.0.1:5001`. For production, use Gunicorn:
+```bash
 gunicorn -w 4 -b 0.0.0.0:5001 audio_align:app
 ```
 
-By default it binds to `127.0.0.1:5001` — set `FLASK_HOST`/`FLASK_PORT` to
-change that, and never set `FLASK_DEBUG=true` in anything reachable from
-outside your machine (Flask's debugger allows arbitrary code execution).
-
-### Optional: enable ASR (Language ID + Profanity scan)
-
+### Optional: Enable ASR (Language ID + Profanity)
+To enable Automatic Speech Recognition for language identification and profanity scanning:
 ```bash
 pip install faster-whisper --break-system-packages
 ```
+*Note: ASR is opt-in per request via the "Run ASR" checkbox. The first run downloads the model (~75MB).*
 
-First run downloads the model (~75MB for the default `base` size). If you're
-deploying in a container, bake the model into the image or mount a persistent
-cache volume so it doesn't re-download on every cold start. ASR is opt-in per
-request (the "Run ASR" checkbox) — it's the slowest step in the pipeline by a
-wide margin, so it's off by default.
+---
 
-## requirements.txt
+## 📁 Repository Contents
 
 ```
-Flask>=3.0
-flask-limiter>=3.5
-numpy>=1.24
-librosa>=0.10
-soundfile>=0.12
-pyloudnorm>=0.1.1
-scipy>=1.11
-Werkzeug>=3.0
-faster-whisper>=1.0.0   # optional — only needed for Run ASR
+.
+├── audio_align.py              # Flask app: routes, alignment analysis, orchestration
+├── capability_extensions.py    # ASR, DME check, AD detection, spatial loudness
+├── requirements.txt
+└── templates/
+    └── index.html              # Frontend (vanilla JS + ECharts)
 ```
+*`audio_align.py` imports directly from `capability_extensions.py`—both must reside in the same folder.*
 
-## Environment variables
+---
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `FFMPEG_PATH` | `ffmpeg` | Path to the ffmpeg binary |
-| `FFPROBE_PATH` | `ffprobe` | Path to the ffprobe binary |
-| `MAX_CONTENT_LENGTH` | `1073741824` (1GB) | Max total request body size |
-| `MAX_FILE_SIZE` | `209715200` (200MB) | Max size per uploaded file |
-| `MAX_WORKERS` | `4` | ThreadPoolExecutor size for parallel file processing |
-| `RATE_LIMIT` | `10 per minute` | Global default rate limit |
-| `UPLOAD_RATE_LIMIT` | `10 per minute` | Rate limit on `/upload` (sync mode) |
-| `QC_RATE_LIMIT` | `10 per minute` | Rate limit on `/qc` (standalone mode) |
-| `DATA_DIR` | `./data` | Session storage; auto-cleaned after 1 hour |
-| `FLASK_HOST` | `127.0.0.1` | Bind address |
-| `FLASK_PORT` | `5001` | Bind port |
-| `FLASK_DEBUG` | `false` | Never set true outside local dev |
-| `WHISPER_MODEL_SIZE`* | `base` | faster-whisper model: tiny/base/small/medium |
-| `WHISPER_DEVICE`* | `cpu` | `cpu` or `cuda` |
+## 📡 API Endpoints
 
-\* Set these by editing the constants at the top of `capability_extensions.py`
-— they aren't wired to env vars yet, so change the source directly if needed.
+| Route | Method | Description |
+| :--- | :--- | :--- |
+| `/upload` | `POST` | **Sync Mode.** Upload `reference` and `comparison[]` files. Returns offset, drift, DNA match, and QC checks. |
+| `/qc` | `POST` | **Standalone Mode.** Upload `files[]`. Returns levels, waveform, spectrum, and QC checks. |
+| `/health` | `GET` | Liveness check. |
+| `/metrics` | `GET` | Prometheus-format metrics. |
+| `/wipe` | `POST` | Clears all session data. |
 
-## API
+---
 
-### `POST /upload` — Dub Sync + QC
+## 🛠 QC Capability Matrix
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `reference` | file | yes | Master audio file |
-| `comparison[]` | file(s) | yes | One or more dub files to check against the master |
-| `vocal_logic` | `"true"`/`"false"` | no | HPSS + 300–3400Hz bandpass before DNA scoring |
-| `me_stem` | file | no | M&E-only stem — enables the DME structural check |
-| `run_asr` | `"true"`/`"false"` | no | Enables Language ID + Profanity (slow) |
-| `expected_language` | string | no | ISO-639-1 code, e.g. `es` — graded against detected language |
+| Check | Sync Mode | Standalone | Notes |
+| :--- | :---: | :---: | :--- |
+| **Start offset / drift / speed** | ✅ | ❌ | Calculates clock-rate ratio and time-compression actions. |
+| **Onset / Chroma DNA match** | ✅ | ❌ | Transient correlation vs. spectral/harmonic correlation. |
+| **Loudness (LUFS) / True Peak** | ✅ | ✅ | Integrated loudness and sample peak measurement. |
+| **Dropouts / Silence Gaps** | ✅ | ✅ | Uses `ffmpeg silencedetect`. |
+| **Hum & Buzz / Rumble** | ✅ | ✅ | 50/60Hz hum and low-freq rumble (First 10s sample). |
+| **Mono-in-Stereo (Dual-mono)** | ✅ | ✅ | Detects identical channels (First 5s sample). |
+| **Spatial Loudness** | ✅ | ✅ | Targets -27 LUFS (Dolby immersive-mix guidance). |
+| **DME Structural Check** | ✅ | ✅ | Heuristic band-energy/correlation (Requires M&E stem upload). |
+| **Language ID / Profanity** | ✅ | ✅ | Opt-in via `run_asr=true`. Uses `faster-whisper`. |
+| **Atmos Bed / AD Detection** | ✅ | ✅ | Container tags/disposition only. Object counts are *not* measurable. |
 
-Returns `{"mode": "sync", "results": [...]}`. Each result includes offset,
-drift, DNA match, chroma DNA, speed factor, levels, waveform data, and
-`qc_checks`.
+---
 
-### `POST /qc` — Standalone Audio QC
+## ⚠️ Known Limitations & Design Choices
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `files[]` | file(s) | yes | One or more independent audio files |
-| `me_stem` | file | no | Same as above |
-| `run_asr` | `"true"`/`"false"` | no | Same as above |
-| `expected_language` | string | no | Same as above |
+- **Sampling:** Hum, rumble, and dual-mono checks sample the first 5–10 seconds of the file. Intermittent mid-file issues may be missed.
+- **Level Spikes:** Uses a coarse statistical peak-outlier heuristic (`ffmpeg astats`), not sample-accurate click/pop detection.
+- **ASR Processing:** Whisper model calls are serialized behind a lock. Expect sequential processing for multi-file ASR requests.
+- **Atmos & DME:** Dolby Renderer metadata (object count/position) cannot be extracted via `ffprobe`. Unmeasurable checks are explicitly reported as `null` rather than false passes.
+- **AV Sync:** Lip-sync/AV sync is **not implemented** as this is strictly an audio-only tool.
 
-Returns `{"mode": "standalone", "results": [...]}`. Each result includes
-levels, waveform, spectrum, and `qc_checks` — no offset/drift/DNA fields,
-since there's nothing to compare against.
+---
 
-### Other routes
+## 💻 Frontend UI
 
-- `GET /health` — liveness check
-- `GET /metrics` — Prometheus-format metrics
-- `POST /wipe` — clears all session data under `DATA_DIR`
+The UI intentionally follows a utilitarian "pro-tool" aesthetic: dark background, monospace typography, flat borders, and no gradients or rounded corners. 
 
-## QC capability matrix
+- Status is communicated via bracketed text (`[PASS]`, `[FAIL]`, `[WARN]`, `[SKIP]`) and color.
+- Results feature tabbed views (Sync Analysis, Advanced QC, Spectrum).
+- A `skip` state is rendered dim/gray, ensuring a check that wasn't performed never looks like a check that failed.
 
-| Check | Requires | Notes |
-|---|---|---|
-| Start offset / drift / speed factor | Reference file | Sync mode only |
-| Onset DNA / Chroma DNA match | Reference file | Sync mode only |
-| Integrated loudness (LUFS) / true peak / sample peak | — | Both modes |
-| Inter-channel phase | Stereo+ | Both modes |
-| Dropouts / silence gaps | — | ffmpeg `silencedetect` |
-| Level spike detection | — | Coarse peak-outlier heuristic, **not** sample-accurate click detection |
-| Hum & buzz (50/60Hz) | — | First 10s sample only |
-| Low-frequency rumble | — | First 10s sample only |
-| Mono-in-stereo (dual-mono) | Stereo | First 5s sample only |
-| Spatial loudness | — | Targets -27 LUFS (Dolby immersive-mix guidance) |
-| Atmos bed channel presence | Atmos-tagged stream | **Object count/position are not measurable** — ffprobe can't extract Dolby Renderer metadata. Always reported as `null`/"not measurable," never faked |
-| Audio Description (AD) detection | — | Container tags/disposition only — untagged AD tracks won't be found; ducking correctness isn't verified |
-| DME structural check | M&E stem upload | Heuristic band-energy/correlation check — **verify flagged files by ear** |
-| Language ID | `run_asr=true` | faster-whisper — samples first 60s |
-| Profanity scan | `run_asr=true` | Text-match on ASR transcript; won't catch mis-transcriptions and by design won't flag bleeped/censored audio |
-| AV Sync / Lip-Sync | — | **Not implemented.** Requires a video file; this is an audio-only tool. Not present in the UI. |
 
-## Summary — what the output actually tells you
 
-Every result — sync mode or standalone — comes back with three layers.
-Read them in this order.
 
-**1. `status` + `reason` — the headline.**
-`PASS` / `WARN` / `FAIL` / `ERROR`. `reason` is a semicolon-separated list of
-exactly which thresholds were breached (or "All metrics within thresholds").
-This is a *gate*, not a full report — a file can say `PASS` here and still
-have something like a missing AD track or an unmeasured Atmos object count
-sitting further down, because those are `skip`/`info` states, not
-pass/fail-worthy on their own. Always open the Advanced QC tab, don't just
-read the badge.
-
-**2. Sync metrics (sync mode only) — is it the same performance, in time?**
-- `offset_ms` / `offset_confidence` — how far the dub's start is shifted
-  from the master, and how tight that estimate is (a wide confidence
-  interval means treat the number as approximate, not exact).
-- `total_drift_ms` — how much the offset changes between the start and end
-  of the file. Non-zero drift usually means a frame-rate/speed mismatch
-  rather than a simple sync error — check `speed_factor` next.
-- `speed_factor` — the clock-rate ratio implied by that drift, with a
-  concrete action (e.g. "Time-compress dub by 0.0412%").
-- `dna_match` / `chroma_dna` — two independent similarity scores between
-  master and dub (onset-transient correlation vs. spectral/harmonic
-  correlation). Low `dna_match` with high `chroma_dna` (or vice versa)
-  usually means one algorithm is a better fit for that content type —
-  worth a manual listen rather than trusting either score alone.
-
-**3. `qc_checks` — everything else, per-check.**
-Every entry in `qc_checks` follows the same shape: it either ran and
-produced a real measurement, or it didn't run and says so — there is
-deliberately no in-between "assumed passing" state. In the UI this is the
-`pass` / `warn` / `fail` / `info` / `skip` badge; in the raw JSON it's
-whatever fields that check documents (see the capability matrix below) plus,
-for most checks, an explicit reason when it didn't run (`"No M&E stem
-provided"`, `"Not Atmos-flagged content"`, etc.). If you're consuming the
-JSON programmatically rather than reading the UI, treat a missing key or a
-`null` value as "not measured," never as "measured and clean."
-
-**Standalone mode's status gate is narrower than sync mode's.** With no
-reference file, `determine_standalone_status()` only gates on loudness,
-true peak, dropout count, hum/buzz, dual-mono, and level spikes — there's no
-offset/drift/DNA equivalent because there's nothing to compare against.
-A `PASS` in standalone mode means "this file's own signal quality is within
-bounds," not "this file matches something else."
-
-## Known limitations
-
-- **First-10s / first-5s sampling** on hum, rumble, and dual-mono checks
-  means issues that start mid-file can be missed. Fine for most localization
-  QC workflows, but worth knowing if you're chasing an intermittent fault.
-- **Level Spike Detection is not true click/pop detection.** It flags
-  statistical peak-level outliers via ffmpeg's `astats`, which can't see
-  single-sample discontinuities. Treat it as a coarse triage signal.
-- **ASR calls are serialized** behind a lock on the shared Whisper model
-  instance — with several files and "Run ASR" on, expect them to process one
-  at a time even though everything else runs in parallel across
-  `MAX_WORKERS` threads.
-- **Profanity wordlist is a small starter set** in
-  `capability_extensions.py` (`DEFAULT_PROFANITY_WORDLIST`) — swap in a
-  maintained moderation list before relying on this for compliance sign-off.
-- **DME and Atmos-object checks are explicitly partial.** Both are labeled
-  "not run" or "not measurable" rather than a false pass/fail when the
-  required input (M&E stem, Dolby Renderer metadata) isn't available.
-
-## Frontend notes
-
-- The UI is intentionally plain: dark background, monospace throughout, flat
-  1px borders, no drop shadows, no gradients, no rounded corners, no emoji.
-  Status is communicated with bracket-style text (`[PASS]`, `[FAIL]`) and
-  color, not icons or pills. Charts use solid low-opacity fills instead of
-  gradient area fills. If you want a more polished/branded look later, the
-  CSS custom properties at the top of the `<style>` block (`--brand`,
-  `--bg`, `--card`, etc.) are the only place you should need to touch.
-- `qc-list` badge states are `pass` / `warn` / `fail` / `info` / `skip`.
-  `skip` means "not run" — it's rendered dim/gray, never as a red failure, so
-  a check that wasn't performed can never look like a check that failed.
-- Sync-mode cards have 3 tabs (Sync Analysis / Advanced QC / Spectrum);
-  standalone cards have 2 (Levels & QC / Spectrum). `switchTab()` is generic
-  and works off DOM id matching, so it doesn't need to know which tab set
-  it's dealing with.
